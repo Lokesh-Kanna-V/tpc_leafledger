@@ -55,12 +55,11 @@ import {
 import { createEmployee, type Employee } from "@/lib/api/employees"
 import type { Consumption } from "@/lib/api/consumption"
 import {
+  accountConsumptionLeaf,
   createConsumption,
-  getConsumption,
   updateConsumption,
   upsertConsumptionAssignment,
 } from "@/lib/api/consumption"
-import { ApiError } from "@/lib/api/request"
 import { cn } from "@/lib/utils"
 
 function dateIsoLocal(): string {
@@ -114,7 +113,6 @@ export default function BookManager({
   const [assignLeafFrom, setAssignLeafFrom] = useState("")
   const [assignNewBook, setAssignNewBook] = useState(false)
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
-  const [accountBookId, setAccountBookId] = useState("")
   const [accountLeafNo, setAccountLeafNo] = useState("")
 
   const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
@@ -135,14 +133,6 @@ export default function BookManager({
   const detailBook = detailBookId
     ? books.find((b) => b.id === detailBookId)
     : undefined
-
-  const booksForAccountSelect = useMemo(
-    () =>
-      [...apiBooks].sort((a, b) =>
-        a.book_number.localeCompare(b.book_number, undefined, { numeric: true })
-      ),
-    [apiBooks]
-  )
 
   const leafDetailRows = useMemo(() => {
     if (!detailBookId) return []
@@ -365,15 +355,7 @@ export default function BookManager({
     !assignErrors.leafFrom
 
   const accountErrors = useMemo(() => {
-    const e: { bookId?: string; leafNo?: string } = {}
-    if (!accountBookId.trim()) {
-      e.bookId = "Select a book."
-    } else {
-      const bid = Number.parseInt(accountBookId, 10)
-      if (!Number.isInteger(bid) || !apiBooks.some((b) => b.id === bid)) {
-        e.bookId = "Invalid book."
-      }
-    }
+    const e: { leafNo?: string } = {}
     const raw = accountLeafNo.trim()
     if (!raw) {
       e.leafNo = "Leaf no. is required."
@@ -388,9 +370,9 @@ export default function BookManager({
       e.leafNo = "Leaf no. must be at least 1."
     }
     return e
-  }, [accountBookId, accountLeafNo, apiBooks])
+  }, [accountLeafNo])
 
-  const canAccount = !accountErrors.bookId && !accountErrors.leafNo
+  const canAccount = !accountErrors.leafNo
 
   function bookTotalLeaves(b: BookRow) {
     return b.leafTo - b.leafFrom + 1
@@ -417,50 +399,17 @@ export default function BookManager({
   }
 
   function resetAccountForm() {
-    setAccountBookId("")
     setAccountLeafNo("")
   }
 
   async function accountSingleLeaf(): Promise<boolean> {
     if (!canAccount) return false
-    const bookId = Number.parseInt(accountBookId, 10)
-    const key = String(Number.parseInt(accountLeafNo.trim(), 10))
-    const today = dateIsoLocal()
+    const leafNum = Number.parseInt(accountLeafNo.trim(), 10)
+    const key = String(leafNum)
     setBusy(true)
     setAccountActionError(null)
     try {
-      let cons
-      try {
-        cons = await getConsumption(bookId, key)
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 404) {
-          setAccountActionError(
-            `No consumption row for that book and leaf. Add or assign the book first.`
-          )
-          return false
-        }
-        throw err
-      }
-
-      if (cons.user_id === null || cons.user_id === undefined) {
-        setAccountActionError(
-          `Leaf ${key} is not assigned to anyone yet — assign before accounting.`
-        )
-        return false
-      }
-
-      if (cons.accounted) {
-        setAccountActionError(`Leaf ${key} is already accounted.`)
-        return false
-      }
-
-      await updateConsumption(bookId, key, {
-        user_id: cons.user_id,
-        assigned_date: cons.assigned_date,
-        accounted: true,
-        accounted_date: today,
-      })
-
+      await accountConsumptionLeaf(key)
       await onReload()
       return true
     } catch (err) {
@@ -1159,12 +1108,7 @@ export default function BookManager({
                 open={accountDialogOpen}
                 onOpenChange={(open) => {
                   setAccountDialogOpen(open)
-                  if (open) {
-                    setAccountActionError(null)
-                    setAccountBookId(
-                      detailBook ? String(detailBook.dbId) : ""
-                    )
-                  }
+                  if (open) setAccountActionError(null)
                 }}
               >
                 <Tooltip>
@@ -1188,8 +1132,8 @@ export default function BookManager({
                   <DialogHeader>
                     <DialogTitle>Account leaf</DialogTitle>
                     <DialogDescription>
-                      Choose the book and leaf number for that book, then mark it
-                      accounted.
+                      Enter one leaf number to mark that leaf accounted. It must
+                      already exist in consumption and be assigned to someone.
                     </DialogDescription>
                   </DialogHeader>
 
@@ -1200,36 +1144,6 @@ export default function BookManager({
                   ) : null}
 
                   <FieldGroup>
-                    <Field data-invalid={!!accountErrors.bookId}>
-                      <FieldLabel htmlFor="account-book-id">Book</FieldLabel>
-                      <FieldContent>
-                        <select
-                          id="account-book-id"
-                          className={cn(
-                            "border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          )}
-                          value={accountBookId}
-                          onChange={(e) => setAccountBookId(e.target.value)}
-                          aria-invalid={!!accountErrors.bookId}
-                        >
-                          <option value="">Select book…</option>
-                          {booksForAccountSelect.map((bk) => (
-                            <option key={bk.id} value={String(bk.id)}>
-                              {bk.book_number} (leaves {bk.leaf_no_from}–
-                              {bk.leaf_no_to})
-                            </option>
-                          ))}
-                        </select>
-                        <FieldError
-                          errors={
-                            accountErrors.bookId
-                              ? [{ message: accountErrors.bookId }]
-                              : []
-                          }
-                        />
-                      </FieldContent>
-                    </Field>
-
                     <Field data-invalid={!!accountErrors.leafNo}>
                       <FieldLabel htmlFor="account-leaf-no">
                         Leaf no.
@@ -1245,7 +1159,8 @@ export default function BookManager({
                           autoComplete="off"
                         />
                         <FieldDescription>
-                          Leaf number within the selected book.
+                          Book is inferred from the loaded consumption row for this
+                          leaf number.
                         </FieldDescription>
                         <FieldError
                           errors={
