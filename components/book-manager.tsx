@@ -47,7 +47,7 @@ import {
   deleteBook,
   updateBook,
 } from "@/lib/api/books"
-import type { Employee } from "@/lib/api/employees"
+import { createEmployee, type Employee } from "@/lib/api/employees"
 import {
   createConsumption,
   getConsumption,
@@ -100,7 +100,9 @@ export default function BookManager({
   const [officeId, setOfficeId] = useState("")
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [assignBookNo, setAssignBookNo] = useState("")
-  const [assignAssignedTo, setAssignAssignedTo] = useState("")
+  const [assignEmployeeId, setAssignEmployeeId] = useState("")
+  const [assignNewEmployeeName, setAssignNewEmployeeName] = useState("")
+  const [assignNewEmployeeRole, setAssignNewEmployeeRole] = useState("")
   const [assignLeafFrom, setAssignLeafFrom] = useState("")
   const [assignNewBook, setAssignNewBook] = useState(false)
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
@@ -220,6 +222,11 @@ export default function BookManager({
     [employees]
   )
 
+  const employeesSortedForAssign = useMemo(
+    () => [...employees].sort((a, b) => a.name.localeCompare(b.name)),
+    [employees]
+  )
+
   const visibleBooks = useMemo(() => {
     let rows = books
     if (statusFilter !== "all") {
@@ -228,7 +235,8 @@ export default function BookManager({
     const q = searchQuery.trim().toLowerCase()
     if (q) {
       rows = rows.filter((b) => {
-        const hay = `${b.bookNo} ${b.assignedTo ?? ""} ${b.officeName ?? ""}`.toLowerCase()
+        const hay =
+          `${b.bookNo} ${b.assignedTo ?? ""} ${b.officeName ?? ""}`.toLowerCase()
         return hay.includes(q)
       })
     }
@@ -238,14 +246,24 @@ export default function BookManager({
   const assignErrors = useMemo(() => {
     const e: {
       bookNo?: string
-      assignedTo?: string
+      employee?: string
+      newEmployeeName?: string
+      newEmployeeRole?: string
       leafFrom?: string
     } = {}
 
     if (!assignBookNo.trim()) e.bookNo = "Book number is required."
-    if (!assignAssignedTo.trim()) e.assignedTo = "Assigned to is required."
-    else if (!matchEmployee(employees, assignAssignedTo)) {
-      e.assignedTo = "Unknown employee — use a name from the Employees list."
+
+    if (!assignEmployeeId) {
+      e.employee = "Select an employee."
+    } else if (assignEmployeeId === "__new__") {
+      if (!assignNewEmployeeName.trim()) e.newEmployeeName = "Name is required."
+      if (!assignNewEmployeeRole.trim()) e.newEmployeeRole = "Role is required."
+    } else {
+      const id = Number.parseInt(assignEmployeeId, 10)
+      if (!Number.isInteger(id) || !employees.some((emp) => emp.id === id)) {
+        e.employee = "Invalid employee selection."
+      }
     }
 
     if (!assignNewBook) {
@@ -272,7 +290,9 @@ export default function BookManager({
 
     return e
   }, [
-    assignAssignedTo,
+    assignEmployeeId,
+    assignNewEmployeeName,
+    assignNewEmployeeRole,
     assignBookNo,
     assignLeafFrom,
     assignNewBook,
@@ -281,7 +301,11 @@ export default function BookManager({
   ])
 
   const canAssign =
-    !assignErrors.bookNo && !assignErrors.assignedTo && !assignErrors.leafFrom
+    !assignErrors.bookNo &&
+    !assignErrors.employee &&
+    !assignErrors.newEmployeeName &&
+    !assignErrors.newEmployeeRole &&
+    !assignErrors.leafFrom
 
   const accountErrors = useMemo(() => {
     const e: { bookNo?: string; through?: string } = {}
@@ -340,7 +364,9 @@ export default function BookManager({
 
   function resetAssignForm() {
     setAssignBookNo("")
-    setAssignAssignedTo("")
+    setAssignEmployeeId("")
+    setAssignNewEmployeeName("")
+    setAssignNewEmployeeRole("")
     setAssignLeafFrom("")
     setAssignNewBook(false)
   }
@@ -412,9 +438,8 @@ export default function BookManager({
     if (!canAssign) return false
 
     const bookNoTrimmed = assignBookNo.trim()
-    const emp = matchEmployee(employees, assignAssignedTo)
     const apiBook = apiBooks.find((b) => b.book_number === bookNoTrimmed)
-    if (!emp || !apiBook) return false
+    if (!apiBook) return false
 
     const leafFromNum = assignNewBook
       ? null
@@ -428,6 +453,17 @@ export default function BookManager({
     setAssignActionError(null)
 
     try {
+      let empId: number
+      if (assignEmployeeId === "__new__") {
+        const created = await createEmployee({
+          name: assignNewEmployeeName.trim(),
+          role: assignNewEmployeeRole.trim(),
+        })
+        empId = created.id
+      } else {
+        empId = Number.parseInt(assignEmployeeId, 10)
+      }
+
       let fromL = apiBook.leaf_no_from
       let bookPayload = apiBook
 
@@ -438,8 +474,7 @@ export default function BookManager({
           bookToUpdateBody({
             ...apiBook,
             leaf_no_from: leafFromNum,
-            initial_assigned_date:
-              apiBook.initial_assigned_date ?? today,
+            initial_assigned_date: apiBook.initial_assigned_date ?? today,
           })
         )
       }
@@ -447,7 +482,7 @@ export default function BookManager({
       const endL = bookPayload.leaf_no_to
       for (let L = fromL; L <= endL; L++) {
         await upsertConsumptionAssignment(String(L), {
-          user_id: emp.id,
+          user_id: empId,
           assigned_date: today,
           accounted: false,
           accounted_date: null,
@@ -530,7 +565,9 @@ export default function BookManager({
       await onReload()
       return true
     } catch (err) {
-      setAddActionError(err instanceof Error ? err.message : "Failed to add book")
+      setAddActionError(
+        err instanceof Error ? err.message : "Failed to add book"
+      )
       return false
     } finally {
       setBusy(false)
@@ -637,9 +674,7 @@ export default function BookManager({
                       ))}
                     </select>
                     <FieldError
-                      errors={
-                        errors.office ? [{ message: errors.office }] : []
-                      }
+                      errors={errors.office ? [{ message: errors.office }] : []}
                     />
                   </FieldContent>
                 </Field>
@@ -784,7 +819,8 @@ export default function BookManager({
               <DialogHeader>
                 <DialogTitle>Assign book</DialogTitle>
                 <DialogDescription>
-                  Pick a book, assign it, and optionally set the starting leaf.
+                  Pick a book and an employee from the list, or add someone new.
+                  Optionally change the starting leaf.
                 </DialogDescription>
               </DialogHeader>
 
@@ -822,34 +858,92 @@ export default function BookManager({
                   </FieldContent>
                 </Field>
 
-                <Field data-invalid={!!assignErrors.assignedTo}>
-                  <FieldLabel htmlFor="assign-assigned-to">
-                    Assigned to
-                  </FieldLabel>
+                <Field data-invalid={!!assignErrors.employee}>
+                  <FieldLabel htmlFor="assign-employee">Assigned to</FieldLabel>
                   <FieldContent>
-                    <Input
-                      id="assign-assigned-to"
-                      value={assignAssignedTo}
-                      onChange={(e) => setAssignAssignedTo(e.target.value)}
-                      placeholder="Type a name…"
-                      list="assigned-to-options"
-                      aria-invalid={!!assignErrors.assignedTo}
-                      autoComplete="off"
-                    />
-                    <datalist id="assigned-to-options">
-                      {assignedToOptions.map((v) => (
-                        <option key={v} value={v} />
+                    <select
+                      id="assign-employee"
+                      className={cn(
+                        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                      )}
+                      value={assignEmployeeId}
+                      onChange={(e) => setAssignEmployeeId(e.target.value)}
+                      aria-invalid={!!assignErrors.employee}
+                    >
+                      <option value="">Select an employee</option>
+                      {employeesSortedForAssign.map((emp) => (
+                        <option key={emp.id} value={String(emp.id)}>
+                          {emp.name} ({emp.role})
+                        </option>
                       ))}
-                    </datalist>
+                      <option value="__new__">+ Add new employee…</option>
+                    </select>
                     <FieldError
                       errors={
-                        assignErrors.assignedTo
-                          ? [{ message: assignErrors.assignedTo }]
+                        assignErrors.employee
+                          ? [{ message: assignErrors.employee }]
                           : []
                       }
                     />
                   </FieldContent>
                 </Field>
+
+                {assignEmployeeId === "__new__" ? (
+                  <>
+                    <Field data-invalid={!!assignErrors.newEmployeeName}>
+                      <FieldLabel htmlFor="assign-new-emp-name">
+                        New employee name
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="assign-new-emp-name"
+                          value={assignNewEmployeeName}
+                          onChange={(e) =>
+                            setAssignNewEmployeeName(e.target.value)
+                          }
+                          placeholder="Full name"
+                          autoComplete="off"
+                          aria-invalid={!!assignErrors.newEmployeeName}
+                        />
+                        <FieldError
+                          errors={
+                            assignErrors.newEmployeeName
+                              ? [{ message: assignErrors.newEmployeeName }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                    <Field data-invalid={!!assignErrors.newEmployeeRole}>
+                      <FieldLabel htmlFor="assign-new-emp-role">
+                        Role
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="assign-new-emp-role"
+                          value={assignNewEmployeeRole}
+                          onChange={(e) =>
+                            setAssignNewEmployeeRole(e.target.value)
+                          }
+                          placeholder="e.g. Clerk"
+                          autoComplete="off"
+                          aria-invalid={!!assignErrors.newEmployeeRole}
+                        />
+                        <FieldDescription>
+                          They will be saved to Employees and assigned to this
+                          book.
+                        </FieldDescription>
+                        <FieldError
+                          errors={
+                            assignErrors.newEmployeeRole
+                              ? [{ message: assignErrors.newEmployeeRole }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                  </>
+                ) : null}
 
                 <Field orientation="horizontal">
                   <FieldLabel htmlFor="assign-new-book">New book</FieldLabel>
@@ -1073,8 +1167,7 @@ export default function BookManager({
         </div>
 
         <Button variant="outline" type="button" disabled={busy}>
-          Total Books:{" "}
-          <span className="font-bold">{books.length}</span>
+          Total Books: <span className="font-bold">{books.length}</span>
         </Button>
 
         <ButtonGroup>
@@ -1116,7 +1209,7 @@ export default function BookManager({
             <TableHead>Leaf No.</TableHead>
             <TableHead>Assigned To</TableHead>
             <TableHead className="w-[110px] text-center">Accounted</TableHead>
-            <TableHead className="w-[100px] text-right">Actions</TableHead>
+            {/* <TableHead className="w-[100px] text-right">Actions</TableHead> */}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1143,7 +1236,7 @@ export default function BookManager({
                     <Checkbox disabled checked={isBookFullyAccounted(b)} />
                   </div>
                 </TableCell>
-                <TableCell className="text-right">
+                {/* <TableCell className="text-right">
                   {b.bookStatus === "completed" ||
                   b.bookStatus === "store" ? null : (
                     <Button
@@ -1156,7 +1249,7 @@ export default function BookManager({
                       Store
                     </Button>
                   )}
-                </TableCell>
+                </TableCell> */}
               </TableRow>
             ))
           )}
