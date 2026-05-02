@@ -25,26 +25,10 @@ export function parseLeafNo(leafNo: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-/** Leaf range shown in UI (may widen below `leaf_no_from` when consumption rows exist there). */
-export function displayLeafSpanForBook(
-  b: Book,
-  consumptions: Consumption[]
-): { from: number; to: number } {
-  const orphanBelow = consumptions
-    .map((c) => parseLeafNo(c.leaf_no))
-    .filter(
-      (n): n is number => n !== null && n < b.leaf_no_from && n <= b.leaf_no_to
-    )
-  const from =
-    orphanBelow.length > 0
-      ? Math.min(b.leaf_no_from, ...orphanBelow)
-      : b.leaf_no_from
-  return { from, to: b.leaf_no_to }
+export function displayLeafSpanForBook(b: Book): { from: number; to: number } {
+  return { from: b.leaf_no_from, to: b.leaf_no_to }
 }
 
-/**
- * Join API books with consumption + employee rows for UI tables and dashboard.
- */
 export function rowsFromDatabase(
   apiBooks: Book[],
   consumptions: Consumption[],
@@ -55,12 +39,11 @@ export function rowsFromDatabase(
   const officeMap = new Map(offices.map((o) => [o.id, o.name]))
 
   return apiBooks.map((b) => {
-    const { from: displayLeafFrom, to: displayLeafTo } = displayLeafSpanForBook(
-      b,
-      consumptions
-    )
+    const { from: displayLeafFrom, to: displayLeafTo } =
+      displayLeafSpanForBook(b)
 
     const leavesInBook = consumptions.filter((c) => {
+      if (c.book_id !== b.id) return false
       const n = parseLeafNo(c.leaf_no)
       return n !== null && n >= displayLeafFrom && n <= displayLeafTo
     })

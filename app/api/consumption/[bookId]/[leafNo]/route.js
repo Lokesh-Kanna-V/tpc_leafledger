@@ -3,13 +3,21 @@ import { jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
+function parseBookId(raw) {
+  const n = Number.parseInt(String(raw), 10);
+  return Number.isInteger(n) ? n : null;
+}
+
 export async function GET(_req, { params }) {
-  const leafNo = (await params).leafNo;
-  if (!leafNo) return jsonError("Invalid leafNo");
+  const { bookId: bookIdRaw, leafNo } = await params;
+  const bookId = parseBookId(bookIdRaw);
+  if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
 
   const result = await query(
-    "SELECT leaf_no, user_id, assigned_date, accounted, accounted_date FROM consumption WHERE leaf_no = $1",
-    [leafNo],
+    `SELECT book_id, leaf_no, user_id, assigned_date, accounted, accounted_date
+     FROM consumption
+     WHERE book_id = $1 AND leaf_no = $2`,
+    [bookId, leafNo],
   );
   const row = result.rows[0];
   if (!row) return jsonError("Consumption not found", 404);
@@ -17,8 +25,9 @@ export async function GET(_req, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const leafNo = (await params).leafNo;
-  if (!leafNo) return jsonError("Invalid leafNo");
+  const { bookId: bookIdRaw, leafNo } = await params;
+  const bookId = parseBookId(bookIdRaw);
+  if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
 
   let body;
   try {
@@ -61,9 +70,9 @@ export async function PUT(request, { params }) {
            assigned_date = $2,
            accounted = $3,
            accounted_date = $4
-       WHERE leaf_no = $5
-       RETURNING leaf_no, user_id, assigned_date, accounted, accounted_date`,
-      [userIdOrNull, assigned_date.trim(), accounted, accountedDateValue, leafNo],
+       WHERE book_id = $5 AND leaf_no = $6
+       RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
+      [userIdOrNull, assigned_date.trim(), accounted, accountedDateValue, bookId, leafNo],
     );
     const row = result.rows[0];
     if (!row) return jsonError("Consumption not found", 404);
@@ -77,13 +86,14 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(_req, { params }) {
-  const leafNo = (await params).leafNo;
-  if (!leafNo) return jsonError("Invalid leafNo");
+  const { bookId: bookIdRaw, leafNo } = await params;
+  const bookId = parseBookId(bookIdRaw);
+  if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
 
-  const result = await query("DELETE FROM consumption WHERE leaf_no = $1 RETURNING leaf_no", [
-    leafNo,
-  ]);
+  const result = await query(
+    "DELETE FROM consumption WHERE book_id = $1 AND leaf_no = $2 RETURNING leaf_no",
+    [bookId, leafNo],
+  );
   if (!result.rows[0]) return jsonError("Consumption not found", 404);
   return Response.json({ ok: true });
 }
-

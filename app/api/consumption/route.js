@@ -5,7 +5,9 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const result = await query(
-    "SELECT leaf_no, user_id, assigned_date, accounted, accounted_date FROM consumption ORDER BY assigned_date DESC",
+    `SELECT book_id, leaf_no, user_id, assigned_date, accounted, accounted_date
+     FROM consumption
+     ORDER BY book_id NULLS LAST, leaf_no`,
   );
   return Response.json(result.rows);
 }
@@ -18,7 +20,9 @@ export async function POST(request) {
     return jsonError("Invalid JSON body");
   }
 
-  const { leaf_no, user_id, assigned_date, accounted, accounted_date } = body ?? {};
+  const { book_id, leaf_no, user_id, assigned_date, accounted, accounted_date } = body ?? {};
+
+  if (!Number.isInteger(book_id)) return jsonError("book_id is required (integer)");
 
   if (typeof leaf_no !== "string" || !leaf_no.trim()) return jsonError("leaf_no is required");
 
@@ -47,10 +51,17 @@ export async function POST(request) {
   try {
     const result = await query(
       `INSERT INTO consumption
-        (leaf_no, user_id, assigned_date, accounted, accounted_date)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING leaf_no, user_id, assigned_date, accounted, accounted_date`,
-      [leaf_no.trim(), userIdOrNull, assigned_date.trim(), accountedValue, accountedDateValue],
+        (book_id, leaf_no, user_id, assigned_date, accounted, accounted_date)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
+      [
+        book_id,
+        leaf_no.trim(),
+        userIdOrNull,
+        assigned_date.trim(),
+        accountedValue,
+        accountedDateValue,
+      ],
     );
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {
@@ -63,13 +74,10 @@ export async function POST(request) {
       err instanceof Error && err.message ? err.message : "Failed to create consumption";
 
     if (code === "23505") {
-      return jsonError(
-        "leaf_no already exists (each leaf number can only belong to one book in the system)",
-        409,
-      );
+      return jsonError("This leaf already exists for this book.", 409);
     }
     if (code === "23503") {
-      return jsonError("Invalid user_id (no matching employee)", 400);
+      return jsonError("Invalid user_id (no matching employee) or book_id", 400);
     }
     if (code === "23514") {
       return jsonError("Invalid accounted/accounted_date (check constraint)", 400);
@@ -91,4 +99,3 @@ export async function POST(request) {
     return jsonError(message, 500);
   }
 }
-

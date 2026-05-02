@@ -1,6 +1,7 @@
 import { ApiError, parseResponse } from "@/lib/api/request"
 
 export type Consumption = {
+  book_id: number | null
   leaf_no: string
   user_id: number | null
   assigned_date: string
@@ -9,6 +10,7 @@ export type Consumption = {
 }
 
 export type CreateConsumptionInput = {
+  book_id: number
   leaf_no: string
   /** Null when the leaf exists but is not assigned to an employee yet. */
   user_id: number | null
@@ -24,22 +26,16 @@ export type UpdateConsumptionInput = {
   accounted_date: string | null
 }
 
-function consumptionPath(leafNo: string): string {
-  return `/api/consumption/${encodeURIComponent(leafNo)}`
+function consumptionPath(bookId: number, leafNo: string): string {
+  return `/api/consumption/${encodeURIComponent(String(bookId))}/${encodeURIComponent(leafNo)}`
 }
 
-/**
- * GET /api/consumption
- */
 export async function getConsumptions(): Promise<Consumption[]> {
   const response = await fetch("/api/consumption", { method: "GET" })
   const data = await parseResponse<Consumption[]>(response)
   return Array.isArray(data) ? data : []
 }
 
-/**
- * POST /api/consumption
- */
 export async function createConsumption(
   body: CreateConsumptionInput
 ): Promise<Consumption> {
@@ -51,22 +47,22 @@ export async function createConsumption(
   return parseResponse<Consumption>(response)
 }
 
-/**
- * GET /api/consumption/[leafNo]
- */
-export async function getConsumption(leafNo: string): Promise<Consumption> {
-  const response = await fetch(consumptionPath(leafNo), { method: "GET" })
+export async function getConsumption(
+  bookId: number,
+  leafNo: string
+): Promise<Consumption> {
+  const response = await fetch(consumptionPath(bookId, leafNo), {
+    method: "GET",
+  })
   return parseResponse<Consumption>(response)
 }
 
-/**
- * PUT /api/consumption/[leafNo]
- */
 export async function updateConsumption(
+  bookId: number,
   leafNo: string,
   body: UpdateConsumptionInput
 ): Promise<Consumption> {
-  const response = await fetch(consumptionPath(leafNo), {
+  const response = await fetch(consumptionPath(bookId, leafNo), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -74,33 +70,40 @@ export async function updateConsumption(
   return parseResponse<Consumption>(response)
 }
 
-/**
- * DELETE /api/consumption/[leafNo]
- */
 export async function deleteConsumption(
+  bookId: number,
   leafNo: string
 ): Promise<{ ok: true }> {
-  const response = await fetch(consumptionPath(leafNo), { method: "DELETE" })
+  const response = await fetch(consumptionPath(bookId, leafNo), {
+    method: "DELETE",
+  })
   return parseResponse<{ ok: true }>(response)
 }
 
-/** Create consumption row, or update if `leaf_no` already exists. */
 export async function upsertConsumptionAssignment(
+  bookId: number,
   leafNo: string,
   params: UpdateConsumptionInput
 ): Promise<Consumption> {
   try {
-    await getConsumption(leafNo)
-    return updateConsumption(leafNo, params)
+    return await updateConsumption(bookId, leafNo, params)
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) {
-      return createConsumption({
-        leaf_no: leafNo,
-        user_id: params.user_id ?? null,
-        assigned_date: params.assigned_date,
-        accounted: params.accounted ?? false,
-        accounted_date: params.accounted_date,
-      })
+      try {
+        return await createConsumption({
+          book_id: bookId,
+          leaf_no: leafNo,
+          user_id: params.user_id ?? null,
+          assigned_date: params.assigned_date,
+          accounted: params.accounted ?? false,
+          accounted_date: params.accounted_date,
+        })
+      } catch (e2) {
+        if (e2 instanceof ApiError && e2.status === 409) {
+          return await updateConsumption(bookId, leafNo, params)
+        }
+        throw e2
+      }
     }
     throw e
   }
