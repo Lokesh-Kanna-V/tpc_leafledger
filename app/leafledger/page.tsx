@@ -253,6 +253,7 @@ export default function Home() {
                 apiBooks={apiBooks}
                 employees={employees}
                 offices={offices}
+                consumptions={consumptions}
                 onReload={reloadData}
               />
             )}

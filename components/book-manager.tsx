@@ -37,8 +37,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-import { PlusIcon, MinusIcon, EqualIcon } from "lucide-react"
-import type { BookRow, BookStatus } from "@/lib/books"
+import { ChevronLeft, EqualIcon, MinusIcon, PlusIcon } from "lucide-react"
+import {
+  displayLeafSpanForBook,
+  parseLeafNo,
+  type BookRow,
+  type BookStatus,
+} from "@/lib/books"
 import type { Office } from "@/lib/api/offices"
 import type { Book } from "@/lib/api/books"
 import {
@@ -48,6 +53,7 @@ import {
   updateBook,
 } from "@/lib/api/books"
 import { createEmployee, type Employee } from "@/lib/api/employees"
+import type { Consumption } from "@/lib/api/consumption"
 import {
   createConsumption,
   getConsumption,
@@ -82,6 +88,7 @@ type BookManagerProps = {
   apiBooks: Book[]
   employees: Employee[]
   offices: Office[]
+  consumptions: Consumption[]
   onReload: () => Promise<void>
 }
 
@@ -90,6 +97,7 @@ export default function BookManager({
   apiBooks,
   employees,
   offices,
+  consumptions,
   onReload,
 }: BookManagerProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -106,8 +114,7 @@ export default function BookManager({
   const [assignLeafFrom, setAssignLeafFrom] = useState("")
   const [assignNewBook, setAssignNewBook] = useState(false)
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
-  const [accountBookNo, setAccountBookNo] = useState("")
-  const [accountThrough, setAccountThrough] = useState("")
+  const [accountLeafNo, setAccountLeafNo] = useState("")
 
   const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -120,6 +127,44 @@ export default function BookManager({
   const [accountActionError, setAccountActionError] = useState<string | null>(
     null
   )
+
+  /** When set, show per-leaf detail table for this book row id. */
+  const [detailBookId, setDetailBookId] = useState<string | null>(null)
+
+  const detailBook = detailBookId
+    ? books.find((b) => b.id === detailBookId)
+    : undefined
+
+  const leafDetailRows = useMemo(() => {
+    if (!detailBookId) return []
+    const b = books.find((x) => x.id === detailBookId)
+    if (!b) return []
+    const empMap = new Map(employees.map((e) => [e.id, e.name]))
+    const rows: {
+      leafNo: number
+      assignedTo: string
+      assignedDate: string
+      accounted: boolean
+      accountedDate: string
+    }[] = []
+    for (let L = b.leafFrom; L <= b.leafTo; L++) {
+      const cons = consumptions.find((c) => parseLeafNo(c.leaf_no) === L)
+      rows.push({
+        leafNo: L,
+        assignedTo:
+          cons?.user_id != null
+            ? (empMap.get(cons.user_id) ?? `User #${cons.user_id}`)
+            : "—",
+        assignedDate: cons?.assigned_date ?? "—",
+        accounted: cons?.accounted ?? false,
+        accountedDate:
+          cons?.accounted_date != null && String(cons.accounted_date).trim()
+            ? String(cons.accounted_date)
+            : "—",
+      })
+    }
+    return rows
+  }, [detailBookId, books, consumptions, employees])
 
   const leafMetrics = useMemo(() => {
     const from = Number.parseInt(leafFrom, 10)
@@ -278,13 +323,16 @@ export default function BookManager({
       const apiBook = apiBooks.find(
         (b) => b.book_number === assignBookNo.trim()
       )
+      const span = apiBook
+        ? displayLeafSpanForBook(apiBook, consumptions)
+        : null
       if (
-        apiBook &&
+        span &&
         assignLeafFrom.trim() &&
         Number.isFinite(from) &&
-        (from < apiBook.leaf_no_from || from > apiBook.leaf_no_to)
+        (from < span.from || from > span.to)
       ) {
-        e.leafFrom = `Must be between ${apiBook.leaf_no_from} and ${apiBook.leaf_no_to}.`
+        e.leafFrom = `Must be between ${span.from} and ${span.to}.`
       }
     }
 
@@ -297,6 +345,7 @@ export default function BookManager({
     assignLeafFrom,
     assignNewBook,
     apiBooks,
+    consumptions,
     employees,
   ])
 
@@ -308,44 +357,24 @@ export default function BookManager({
     !assignErrors.leafFrom
 
   const accountErrors = useMemo(() => {
-    const e: { bookNo?: string; through?: string } = {}
-    const value = accountBookNo.trim()
-    if (!value) {
-      e.bookNo = "Leaf No is required."
+    const e: { leafNo?: string } = {}
+    const raw = accountLeafNo.trim()
+    if (!raw) {
+      e.leafNo = "Leaf no. is required."
       return e
     }
-
-    if (!bookNoOptions.includes(value)) {
-      e.bookNo = "Select a valid Leaf No"
-    }
-
-    const selected = books.find((b) => b.bookNo === value)
-    if (!selected) {
-      e.bookNo = "Select a valid Book No"
+    if (!/^\d+$/.test(raw)) {
+      e.leafNo = "Enter a positive whole leaf number."
       return e
     }
-
-    if (!accountThrough.trim()) {
-      e.through = "Leaf No is required."
-      return e
+    const n = Number.parseInt(raw, 10)
+    if (n < 1) {
+      e.leafNo = "Leaf no. must be at least 1."
     }
-
-    const through = Number.parseInt(accountThrough, 10)
-    if (Number.isNaN(through) || !Number.isFinite(through)) {
-      e.through = "Leaf No must be a number."
-      return e
-    }
-
-    if (through < selected.leafFrom) {
-      e.through = `Must be ≥ ${selected.leafFrom}.`
-    } else if (through > selected.leafTo) {
-      e.through = `Must be ≤ ${selected.leafTo}.`
-    }
-
     return e
-  }, [accountBookNo, accountThrough, bookNoOptions, books])
+  }, [accountLeafNo])
 
-  const canAccount = !accountErrors.bookNo && !accountErrors.through
+  const canAccount = !accountErrors.leafNo
 
   function bookTotalLeaves(b: BookRow) {
     return b.leafTo - b.leafFrom + 1
@@ -372,55 +401,47 @@ export default function BookManager({
   }
 
   function resetAccountForm() {
-    setAccountBookNo("")
-    setAccountThrough("")
+    setAccountLeafNo("")
   }
 
-  async function accountBook(): Promise<boolean> {
+  async function accountSingleLeaf(): Promise<boolean> {
     if (!canAccount) return false
-    const bookNoTrimmed = accountBookNo.trim()
-    const through = Number.parseInt(accountThrough, 10)
-    const row = books.find((b) => b.bookNo === bookNoTrimmed)
-    const apiBook = apiBooks.find((b) => b.book_number === bookNoTrimmed)
-    if (!row || !apiBook) return false
-
+    const key = String(Number.parseInt(accountLeafNo.trim(), 10))
     const today = dateIsoLocal()
     setBusy(true)
     setAccountActionError(null)
     try {
-      for (let L = row.leafFrom; L <= through; L++) {
-        const key = String(L)
-        try {
-          const cons = await getConsumption(key)
-          if (cons.user_id === null || cons.user_id === undefined) {
-            setAccountActionError(
-              `Leaf ${L} is not assigned to anyone yet — assign before accounting.`
-            )
-            return false
-          }
-          await updateConsumption(key, {
-            user_id: cons.user_id,
-            assigned_date: cons.assigned_date,
-            accounted: true,
-            accounted_date: today,
-          })
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 404) {
-            setAccountActionError(
-              `Leaf ${L} has no consumption row — add the book again or contact support.`
-            )
-            return false
-          }
-          throw err
+      let cons
+      try {
+        cons = await getConsumption(key)
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) {
+          setAccountActionError(
+            `No consumption row for leaf ${key}. Add or assign the book first.`
+          )
+          return false
         }
+        throw err
       }
 
-      if (through >= row.leafTo) {
-        await updateBook(
-          apiBook.id,
-          bookToUpdateBody({ ...apiBook, book_status: "completed" })
+      if (cons.user_id === null || cons.user_id === undefined) {
+        setAccountActionError(
+          `Leaf ${key} is not assigned to anyone yet — assign before accounting.`
         )
+        return false
       }
+
+      if (cons.accounted) {
+        setAccountActionError(`Leaf ${key} is already accounted.`)
+        return false
+      }
+
+      await updateConsumption(key, {
+        user_id: cons.user_id,
+        assigned_date: cons.assigned_date,
+        accounted: true,
+        accounted_date: today,
+      })
 
       await onReload()
       return true
@@ -464,22 +485,13 @@ export default function BookManager({
         empId = Number.parseInt(assignEmployeeId, 10)
       }
 
-      let fromL = apiBook.leaf_no_from
-      let bookPayload = apiBook
+      const span = displayLeafSpanForBook(apiBook, consumptions)
+      const fromL = assignNewBook ? span.from : leafFromNum!
+      const endL = span.to
 
-      if (!assignNewBook && leafFromNum !== null) {
-        fromL = leafFromNum
-        bookPayload = await updateBook(
-          apiBook.id,
-          bookToUpdateBody({
-            ...apiBook,
-            leaf_no_from: leafFromNum,
-            initial_assigned_date: apiBook.initial_assigned_date ?? today,
-          })
-        )
-      }
+      // Only update consumption rows — do not change book.leaf_no_from, or later
+      // assignments would shrink the visible range and hide leaves assigned earlier.
 
-      const endL = bookPayload.leaf_no_to
       for (let L = fromL; L <= endL; L++) {
         await upsertConsumptionAssignment(String(L), {
           user_id: empId,
@@ -591,6 +603,95 @@ export default function BookManager({
 
   return (
     <div className="mt-10">
+      {detailBookId ? (
+        detailBook ? (
+          <div className="flex max-h-[calc(100vh-8rem)] min-h-0 flex-col">
+            <div className="mb-4 shrink-0 flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={() => setDetailBookId(null)}
+              >
+                <ChevronLeft className="h-4 w-4" aria-hidden />
+                Back to books
+              </Button>
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">
+                  Book {detailBook.bookNo}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {detailBook.officeName ?? `Office #${detailBook.officeId}`} ·
+                  Leaves {detailBook.leafFrom}–{detailBook.leafTo} (
+                  {detailBook.leafTo - detailBook.leafFrom + 1}) · Status:{" "}
+                  {detailBook.bookStatus}
+                </p>
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 shadow-sm">
+                  <TableRow>
+                    <TableHead className="w-[100px]">Leaf no.</TableHead>
+                    <TableHead>Assigned to</TableHead>
+                    <TableHead>Assigned date</TableHead>
+                    <TableHead className="w-[100px] text-center">
+                      Accounted
+                    </TableHead>
+                    <TableHead>Accounted date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leafDetailRows.map((row) => (
+                    <TableRow key={row.leafNo}>
+                      <TableCell className="font-medium tabular-nums">
+                        {row.leafNo}
+                      </TableCell>
+                      <TableCell>{row.assignedTo}</TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">
+                        {row.assignedDate}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <Checkbox
+                            checked={row.accounted}
+                            disabled
+                            aria-label={
+                              row.accounted
+                                ? `Leaf ${row.leafNo} accounted`
+                                : `Leaf ${row.leafNo} not accounted`
+                            }
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">
+                        {row.accountedDate}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => setDetailBookId(null)}
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+              Back to books
+            </Button>
+            <p className="text-sm text-muted-foreground">Book not found.</p>
+          </div>
+        )
+      ) : (
+        <>
       <div className="mb-10 flex justify-between rounded-xl border border-gray-200 bg-gray-50 p-2">
         <div className="flex flex-wrap items-center gap-2">
           <Dialog
@@ -1024,24 +1125,23 @@ export default function BookManager({
                   <Button
                     variant="outline"
                     size="icon"
-                    aria-label="Account Leaves"
+                    aria-label="Account leaf"
                   >
                     <EqualIcon />
                   </Button>
                 </DialogTrigger>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Account Leaves</p>
+                <p>Account leaf</p>
               </TooltipContent>
             </Tooltip>
 
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Account leaves</DialogTitle>
+                <DialogTitle>Account leaf</DialogTitle>
                 <DialogDescription>
-                  Marks leaves from the start of the book through the number you
-                  enter as accounted. Assign leaves first. Fully accounting a
-                  book marks it completed.
+                  Enter one leaf number to mark that leaf accounted. The leaf
+                  must already exist in consumption and be assigned to someone.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1052,64 +1152,26 @@ export default function BookManager({
               ) : null}
 
               <FieldGroup>
-                <Field data-invalid={!!accountErrors.bookNo}>
-                  <FieldLabel htmlFor="account-book-no">Book No.</FieldLabel>
+                <Field data-invalid={!!accountErrors.leafNo}>
+                  <FieldLabel htmlFor="account-leaf-no">Leaf no.</FieldLabel>
                   <FieldContent>
                     <Input
-                      id="account-book-no"
-                      value={accountBookNo}
-                      onChange={(e) => {
-                        const next = e.target.value
-                        setAccountBookNo(next)
-
-                        const selected = books.find(
-                          (b) => b.bookNo === next.trim()
-                        )
-                        if (selected && !accountThrough.trim()) {
-                          setAccountThrough(String(selected.leafTo))
-                        }
-                      }}
-                      placeholder="Type to search…"
-                      list="account-book-no-options"
-                      aria-invalid={!!accountErrors.bookNo}
+                      id="account-leaf-no"
+                      inputMode="numeric"
+                      value={accountLeafNo}
+                      onChange={(e) => setAccountLeafNo(e.target.value)}
+                      placeholder="e.g. 42"
+                      aria-invalid={!!accountErrors.leafNo}
                       autoComplete="off"
                     />
-                    <datalist id="account-book-no-options">
-                      {bookNoOptions.map((v) => (
-                        <option key={v} value={v} />
-                      ))}
-                    </datalist>
-                    <FieldError
-                      errors={
-                        accountErrors.bookNo
-                          ? [{ message: accountErrors.bookNo }]
-                          : []
-                      }
-                    />
-                  </FieldContent>
-                </Field>
-
-                <Field data-invalid={!!accountErrors.through}>
-                  <FieldLabel htmlFor="account-through">
-                    Account through leaf
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="account-through"
-                      inputMode="numeric"
-                      value={accountThrough}
-                      onChange={(e) => setAccountThrough(e.target.value)}
-                      placeholder="e.g. 50"
-                      aria-invalid={!!accountErrors.through}
-                    />
                     <FieldDescription>
-                      Inclusive — every leaf from the book start through this
-                      number is marked accounted.
+                      One leaf per submit — matches the global leaf number in
+                      your database.
                     </FieldDescription>
                     <FieldError
                       errors={
-                        accountErrors.through
-                          ? [{ message: accountErrors.through }]
+                        accountErrors.leafNo
+                          ? [{ message: accountErrors.leafNo }]
                           : []
                       }
                     />
@@ -1129,7 +1191,7 @@ export default function BookManager({
                     type="button"
                     disabled={!canAccount || busy}
                     onClick={async () => {
-                      const ok = await accountBook()
+                      const ok = await accountSingleLeaf()
                       if (!ok) return
                       resetAccountForm()
                       setAccountDialogOpen(false)
@@ -1142,12 +1204,12 @@ export default function BookManager({
                     variant="secondary"
                     disabled={!canAccount || busy}
                     onClick={async () => {
-                      const ok = await accountBook()
+                      const ok = await accountSingleLeaf()
                       if (!ok) return
                       resetAccountForm()
                     }}
                   >
-                    Account more
+                    Account another
                   </Button>
                 </div>
               </DialogFooter>
@@ -1215,13 +1277,26 @@ export default function BookManager({
         <TableBody>
           {visibleBooks.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground">
+              <TableCell colSpan={5} className="text-muted-foreground">
                 No books match this view.
               </TableCell>
             </TableRow>
           ) : (
             visibleBooks.map((b) => (
-              <TableRow key={b.id}>
+              <TableRow
+                key={b.id}
+                className="cursor-pointer hover:bg-muted/60"
+                tabIndex={0}
+                role="button"
+                aria-label={`Open leaf details for book ${b.bookNo}`}
+                onClick={() => setDetailBookId(b.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    setDetailBookId(b.id)
+                  }
+                }}
+              >
                 <TableCell className="font-medium">{b.bookNo}</TableCell>
                 <TableCell>{b.officeName ?? `Office #${b.officeId}`}</TableCell>
                 <TableCell className="tabular-nums">
@@ -1255,6 +1330,8 @@ export default function BookManager({
           )}
         </TableBody>
       </Table>
+        </>
+      )}
     </div>
   )
 }

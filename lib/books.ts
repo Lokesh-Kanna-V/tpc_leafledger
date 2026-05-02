@@ -25,6 +25,24 @@ export function parseLeafNo(leafNo: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** Leaf range shown in UI (may widen below `leaf_no_from` when consumption rows exist there). */
+export function displayLeafSpanForBook(
+  b: Book,
+  consumptions: Consumption[]
+): { from: number; to: number } {
+  const orphanBelow = consumptions
+    .map((c) => parseLeafNo(c.leaf_no))
+    .filter(
+      (n): n is number =>
+        n !== null && n < b.leaf_no_from && n <= b.leaf_no_to
+    )
+  const from =
+    orphanBelow.length > 0
+      ? Math.min(b.leaf_no_from, ...orphanBelow)
+      : b.leaf_no_from
+  return { from, to: b.leaf_no_to }
+}
+
 /**
  * Join API books with consumption + employee rows for UI tables and dashboard.
  */
@@ -38,9 +56,12 @@ export function rowsFromDatabase(
   const officeMap = new Map(offices.map((o) => [o.id, o.name]))
 
   return apiBooks.map((b) => {
+    const { from: displayLeafFrom, to: displayLeafTo } =
+      displayLeafSpanForBook(b, consumptions)
+
     const leavesInBook = consumptions.filter((c) => {
       const n = parseLeafNo(c.leaf_no)
-      return n !== null && n >= b.leaf_no_from && n <= b.leaf_no_to
+      return n !== null && n >= displayLeafFrom && n <= displayLeafTo
     })
 
     const userIds = [
@@ -50,13 +71,14 @@ export function rowsFromDatabase(
           .filter((id): id is number => typeof id === "number" && Number.isInteger(id))
       ),
     ]
-    const names = userIds.map((id) => empMap.get(id) ?? `#${id}`)
-    let assignedTo: string | undefined
-    if (names.length === 1) assignedTo = names[0]
-    else if (names.length > 1) assignedTo = `${names[0]} (+${names.length - 1})`
+    const names = userIds
+      .map((id) => empMap.get(id) ?? `#${id}`)
+      .sort((a, b) => a.localeCompare(b))
+    const assignedTo =
+      names.length > 0 ? names.join(", ") : undefined
 
-    let accountedThrough = b.leaf_no_from - 1
-    for (let L = b.leaf_no_from; L <= b.leaf_no_to; L++) {
+    let accountedThrough = displayLeafFrom - 1
+    for (let L = displayLeafFrom; L <= displayLeafTo; L++) {
       const row = leavesInBook.find((c) => parseLeafNo(c.leaf_no) === L)
       if (!row || !row.accounted) break
       accountedThrough = L
@@ -66,8 +88,8 @@ export function rowsFromDatabase(
       id: String(b.id),
       dbId: b.id,
       bookNo: b.book_number,
-      leafFrom: b.leaf_no_from,
-      leafTo: b.leaf_no_to,
+      leafFrom: displayLeafFrom,
+      leafTo: displayLeafTo,
       officeId: b.office_id,
       officeName: officeMap.get(b.office_id),
       bookStatus: b.book_status,
