@@ -33,8 +33,7 @@ export function displayLeafSpanForBook(
   const orphanBelow = consumptions
     .map((c) => parseLeafNo(c.leaf_no))
     .filter(
-      (n): n is number =>
-        n !== null && n < b.leaf_no_from && n <= b.leaf_no_to
+      (n): n is number => n !== null && n < b.leaf_no_from && n <= b.leaf_no_to
     )
   const from =
     orphanBelow.length > 0
@@ -56,8 +55,10 @@ export function rowsFromDatabase(
   const officeMap = new Map(offices.map((o) => [o.id, o.name]))
 
   return apiBooks.map((b) => {
-    const { from: displayLeafFrom, to: displayLeafTo } =
-      displayLeafSpanForBook(b, consumptions)
+    const { from: displayLeafFrom, to: displayLeafTo } = displayLeafSpanForBook(
+      b,
+      consumptions
+    )
 
     const leavesInBook = consumptions.filter((c) => {
       const n = parseLeafNo(c.leaf_no)
@@ -68,14 +69,15 @@ export function rowsFromDatabase(
       ...new Set(
         leavesInBook
           .map((l) => l.user_id)
-          .filter((id): id is number => typeof id === "number" && Number.isInteger(id))
+          .filter(
+            (id): id is number => typeof id === "number" && Number.isInteger(id)
+          )
       ),
     ]
     const names = userIds
       .map((id) => empMap.get(id) ?? `#${id}`)
       .sort((a, b) => a.localeCompare(b))
-    const assignedTo =
-      names.length > 0 ? names.join(", ") : undefined
+    const assignedTo = names.length > 0 ? names.join(", ") : undefined
 
     let accountedThrough = displayLeafFrom - 1
     for (let L = displayLeafFrom; L <= displayLeafTo; L++) {

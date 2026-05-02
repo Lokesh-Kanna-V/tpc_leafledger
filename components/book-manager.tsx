@@ -606,7 +606,7 @@ export default function BookManager({
       {detailBookId ? (
         detailBook ? (
           <div className="flex max-h-[calc(100vh-8rem)] min-h-0 flex-col">
-            <div className="mb-4 shrink-0 flex flex-wrap items-center gap-3">
+            <div className="mb-4 flex shrink-0 flex-wrap items-center gap-3">
               <Button
                 type="button"
                 variant="outline"
@@ -630,7 +630,7 @@ export default function BookManager({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto">
+            <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
               <Table>
                 <TableHeader className="sticky top-0 z-10 shadow-sm">
                   <TableRow>
@@ -650,7 +650,7 @@ export default function BookManager({
                         {row.leafNo}
                       </TableCell>
                       <TableCell>{row.assignedTo}</TableCell>
-                      <TableCell className="tabular-nums text-muted-foreground">
+                      <TableCell className="text-muted-foreground tabular-nums">
                         {row.assignedDate}
                       </TableCell>
                       <TableCell className="text-center">
@@ -666,7 +666,7 @@ export default function BookManager({
                           />
                         </div>
                       </TableCell>
-                      <TableCell className="tabular-nums text-muted-foreground">
+                      <TableCell className="text-muted-foreground tabular-nums">
                         {row.accountedDate}
                       </TableCell>
                     </TableRow>
@@ -692,626 +692,659 @@ export default function BookManager({
         )
       ) : (
         <>
-      <div className="mb-10 flex justify-between rounded-xl border border-gray-200 bg-gray-50 p-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Dialog
-            open={dialogOpen}
-            onOpenChange={(open) => {
-              setDialogOpen(open)
-              if (open) setAddActionError(null)
-            }}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="icon" aria-label="Go Back">
-                    <PlusIcon />
-                  </Button>
-                </DialogTrigger>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Add Books</p>
-              </TooltipContent>
-            </Tooltip>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Add new book</DialogTitle>
-                <DialogDescription>
-                  Enter the leaf range. Leaf count cannot exceed <b>50</b>.
-                </DialogDescription>
-              </DialogHeader>
+          <div className="mb-10 flex justify-between rounded-xl border border-gray-200 bg-gray-50 p-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Dialog
+                open={dialogOpen}
+                onOpenChange={(open) => {
+                  setDialogOpen(open)
+                  if (open) setAddActionError(null)
+                }}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Go Back"
+                      >
+                        <PlusIcon />
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Add Books</p>
+                  </TooltipContent>
+                </Tooltip>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add new book</DialogTitle>
+                    <DialogDescription>
+                      Enter the leaf range. Leaf count cannot exceed <b>50</b>.
+                    </DialogDescription>
+                  </DialogHeader>
 
-              <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
-                <div className="text-sm font-medium">Leaf count</div>
-                <div
-                  className="rounded-md border bg-background px-2 py-0.5 text-sm font-semibold tabular-nums"
-                  aria-live="polite"
-                >
-                  {leafCountLabel}
-                </div>
-              </div>
-
-              {addActionError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {addActionError}
-                </p>
-              ) : null}
-
-              <FieldGroup>
-                <Field data-invalid={!!errors.bookNo}>
-                  <FieldLabel htmlFor="book-no">Book No</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="book-no"
-                      value={bookNo}
-                      onChange={(e) => setBookNo(e.target.value)}
-                      placeholder="e.g. BK-001"
-                      aria-invalid={!!errors.bookNo}
-                      autoComplete="off"
-                    />
-                    <FieldError
-                      errors={errors.bookNo ? [{ message: errors.bookNo }] : []}
-                    />
-                  </FieldContent>
-                </Field>
-
-                <Field data-invalid={!!errors.office}>
-                  <FieldLabel htmlFor="add-book-office">Office</FieldLabel>
-                  <FieldContent>
-                    <select
-                      id="add-book-office"
-                      className={cn(
-                        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
-                      )}
-                      value={officeId}
-                      onChange={(e) => setOfficeId(e.target.value)}
-                      aria-invalid={!!errors.office}
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
+                    <div className="text-sm font-medium">Leaf count</div>
+                    <div
+                      className="rounded-md border bg-background px-2 py-0.5 text-sm font-semibold tabular-nums"
+                      aria-live="polite"
                     >
-                      <option value="">Select an office</option>
-                      {offices.map((o) => (
-                        <option key={o.id} value={String(o.id)}>
-                          {o.name}
-                        </option>
-                      ))}
-                    </select>
-                    <FieldError
-                      errors={errors.office ? [{ message: errors.office }] : []}
-                    />
-                  </FieldContent>
-                </Field>
+                      {leafCountLabel}
+                    </div>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Field data-invalid={!!errors.leafFrom}>
-                    <FieldLabel htmlFor="leaf-from">Leaf from</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="leaf-from"
-                        inputMode="numeric"
-                        value={leafFrom}
-                        onChange={(e) => setLeafFrom(e.target.value)}
-                        placeholder="1"
-                        aria-invalid={!!errors.leafFrom}
-                      />
-                      <FieldError
-                        errors={
-                          errors.leafFrom ? [{ message: errors.leafFrom }] : []
-                        }
-                      />
-                    </FieldContent>
-                  </Field>
+                  {addActionError ? (
+                    <p className="text-sm text-destructive" role="alert">
+                      {addActionError}
+                    </p>
+                  ) : null}
 
-                  <Field data-invalid={!!errors.leafTo}>
-                    <FieldLabel htmlFor="leaf-to">Leaf to</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="leaf-to"
-                        inputMode="numeric"
-                        value={leafTo}
-                        onChange={(e) => setLeafTo(e.target.value)}
-                        placeholder="50"
-                        aria-invalid={!!errors.leafTo}
-                      />
-                      <FieldError
-                        errors={
-                          errors.leafTo ? [{ message: errors.leafTo }] : []
-                        }
-                      />
-                    </FieldContent>
-                  </Field>
-                </div>
-
-                <Field data-invalid={!!errors.assignee}>
-                  <FieldLabel htmlFor="assigned-to">
-                    Assigned to{" "}
-                    <span className="text-muted-foreground">(optional)</span>
-                  </FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="assigned-to"
-                      value={assignedTo}
-                      onChange={(e) => setAssignedTo(e.target.value)}
-                      placeholder="Employee name"
-                      list="add-assigned-to-options"
-                      autoComplete="off"
-                      aria-invalid={!!errors.assignee}
-                    />
-                    <datalist id="add-assigned-to-options">
-                      {assignedToOptions.map((v) => (
-                        <option key={v} value={v} />
-                      ))}
-                    </datalist>
-                    <FieldDescription>
-                      Must match a name from Employees. Leave empty to assign
-                      later.
-                    </FieldDescription>
-                    <FieldError
-                      errors={
-                        errors.assignee ? [{ message: errors.assignee }] : []
-                      }
-                    />
-                  </FieldContent>
-                </Field>
-              </FieldGroup>
-
-              <DialogFooter className="sm:justify-between">
-                <div className="flex flex-1 items-center justify-between gap-2 sm:justify-start">
-                  <DialogClose asChild>
-                    <Button variant="outline" type="button">
-                      Close
-                    </Button>
-                  </DialogClose>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    disabled={!canAdd || busy}
-                    onClick={async () => {
-                      const ok = await addBook()
-                      if (!ok) return
-                      resetForm()
-                      setDialogOpen(false)
-                    }}
-                  >
-                    Add and close
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={!canAdd || busy}
-                    onClick={async () => {
-                      const ok = await addBook()
-                      if (!ok) return
-                      resetForm()
-                    }}
-                  >
-                    Add more
-                  </Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog
-            open={assignDialogOpen}
-            onOpenChange={(open) => {
-              setAssignDialogOpen(open)
-              if (open) setAssignActionError(null)
-            }}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Assign Books"
-                  >
-                    <MinusIcon />
-                  </Button>
-                </DialogTrigger>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Assign Books</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Assign book</DialogTitle>
-                <DialogDescription>
-                  Pick a book and an employee from the list, or add someone new.
-                  Optionally change the starting leaf.
-                </DialogDescription>
-              </DialogHeader>
-
-              {assignActionError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {assignActionError}
-                </p>
-              ) : null}
-
-              <FieldGroup>
-                <Field data-invalid={!!assignErrors.bookNo}>
-                  <FieldLabel htmlFor="assign-book-no">Book number</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="assign-book-no"
-                      value={assignBookNo}
-                      onChange={(e) => setAssignBookNo(e.target.value)}
-                      placeholder="Type to search…"
-                      list="book-no-options"
-                      aria-invalid={!!assignErrors.bookNo}
-                      autoComplete="off"
-                    />
-                    <datalist id="book-no-options">
-                      {bookNoOptions.map((v) => (
-                        <option key={v} value={v} />
-                      ))}
-                    </datalist>
-                    <FieldError
-                      errors={
-                        assignErrors.bookNo
-                          ? [{ message: assignErrors.bookNo }]
-                          : []
-                      }
-                    />
-                  </FieldContent>
-                </Field>
-
-                <Field data-invalid={!!assignErrors.employee}>
-                  <FieldLabel htmlFor="assign-employee">Assigned to</FieldLabel>
-                  <FieldContent>
-                    <select
-                      id="assign-employee"
-                      className={cn(
-                        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
-                      )}
-                      value={assignEmployeeId}
-                      onChange={(e) => setAssignEmployeeId(e.target.value)}
-                      aria-invalid={!!assignErrors.employee}
-                    >
-                      <option value="">Select an employee</option>
-                      {employeesSortedForAssign.map((emp) => (
-                        <option key={emp.id} value={String(emp.id)}>
-                          {emp.name} ({emp.role})
-                        </option>
-                      ))}
-                      <option value="__new__">+ Add new employee…</option>
-                    </select>
-                    <FieldError
-                      errors={
-                        assignErrors.employee
-                          ? [{ message: assignErrors.employee }]
-                          : []
-                      }
-                    />
-                  </FieldContent>
-                </Field>
-
-                {assignEmployeeId === "__new__" ? (
-                  <>
-                    <Field data-invalid={!!assignErrors.newEmployeeName}>
-                      <FieldLabel htmlFor="assign-new-emp-name">
-                        New employee name
-                      </FieldLabel>
+                  <FieldGroup>
+                    <Field data-invalid={!!errors.bookNo}>
+                      <FieldLabel htmlFor="book-no">Book No</FieldLabel>
                       <FieldContent>
                         <Input
-                          id="assign-new-emp-name"
-                          value={assignNewEmployeeName}
-                          onChange={(e) =>
-                            setAssignNewEmployeeName(e.target.value)
-                          }
-                          placeholder="Full name"
+                          id="book-no"
+                          value={bookNo}
+                          onChange={(e) => setBookNo(e.target.value)}
+                          placeholder="e.g. BK-001"
+                          aria-invalid={!!errors.bookNo}
                           autoComplete="off"
-                          aria-invalid={!!assignErrors.newEmployeeName}
                         />
                         <FieldError
                           errors={
-                            assignErrors.newEmployeeName
-                              ? [{ message: assignErrors.newEmployeeName }]
-                              : []
+                            errors.bookNo ? [{ message: errors.bookNo }] : []
                           }
                         />
                       </FieldContent>
                     </Field>
-                    <Field data-invalid={!!assignErrors.newEmployeeRole}>
-                      <FieldLabel htmlFor="assign-new-emp-role">
-                        Role
+
+                    <Field data-invalid={!!errors.office}>
+                      <FieldLabel htmlFor="add-book-office">Office</FieldLabel>
+                      <FieldContent>
+                        <select
+                          id="add-book-office"
+                          className={cn(
+                            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                          )}
+                          value={officeId}
+                          onChange={(e) => setOfficeId(e.target.value)}
+                          aria-invalid={!!errors.office}
+                        >
+                          <option value="">Select an office</option>
+                          {offices.map((o) => (
+                            <option key={o.id} value={String(o.id)}>
+                              {o.name}
+                            </option>
+                          ))}
+                        </select>
+                        <FieldError
+                          errors={
+                            errors.office ? [{ message: errors.office }] : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field data-invalid={!!errors.leafFrom}>
+                        <FieldLabel htmlFor="leaf-from">Leaf from</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            id="leaf-from"
+                            inputMode="numeric"
+                            value={leafFrom}
+                            onChange={(e) => setLeafFrom(e.target.value)}
+                            placeholder="1"
+                            aria-invalid={!!errors.leafFrom}
+                          />
+                          <FieldError
+                            errors={
+                              errors.leafFrom
+                                ? [{ message: errors.leafFrom }]
+                                : []
+                            }
+                          />
+                        </FieldContent>
+                      </Field>
+
+                      <Field data-invalid={!!errors.leafTo}>
+                        <FieldLabel htmlFor="leaf-to">Leaf to</FieldLabel>
+                        <FieldContent>
+                          <Input
+                            id="leaf-to"
+                            inputMode="numeric"
+                            value={leafTo}
+                            onChange={(e) => setLeafTo(e.target.value)}
+                            placeholder="50"
+                            aria-invalid={!!errors.leafTo}
+                          />
+                          <FieldError
+                            errors={
+                              errors.leafTo ? [{ message: errors.leafTo }] : []
+                            }
+                          />
+                        </FieldContent>
+                      </Field>
+                    </div>
+
+                    <Field data-invalid={!!errors.assignee}>
+                      <FieldLabel htmlFor="assigned-to">
+                        Assigned to{" "}
+                        <span className="text-muted-foreground">
+                          (optional)
+                        </span>
                       </FieldLabel>
                       <FieldContent>
                         <Input
-                          id="assign-new-emp-role"
-                          value={assignNewEmployeeRole}
-                          onChange={(e) =>
-                            setAssignNewEmployeeRole(e.target.value)
-                          }
-                          placeholder="e.g. Clerk"
+                          id="assigned-to"
+                          value={assignedTo}
+                          onChange={(e) => setAssignedTo(e.target.value)}
+                          placeholder="Employee name"
+                          list="add-assigned-to-options"
                           autoComplete="off"
-                          aria-invalid={!!assignErrors.newEmployeeRole}
+                          aria-invalid={!!errors.assignee}
                         />
+                        <datalist id="add-assigned-to-options">
+                          {assignedToOptions.map((v) => (
+                            <option key={v} value={v} />
+                          ))}
+                        </datalist>
                         <FieldDescription>
-                          They will be saved to Employees and assigned to this
-                          book.
+                          Must match a name from Employees. Leave empty to
+                          assign later.
                         </FieldDescription>
                         <FieldError
                           errors={
-                            assignErrors.newEmployeeRole
-                              ? [{ message: assignErrors.newEmployeeRole }]
+                            errors.assignee
+                              ? [{ message: errors.assignee }]
                               : []
                           }
                         />
                       </FieldContent>
                     </Field>
-                  </>
-                ) : null}
+                  </FieldGroup>
 
-                <Field orientation="horizontal">
-                  <FieldLabel htmlFor="assign-new-book">New book</FieldLabel>
-                  <FieldContent>
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="assign-new-book"
-                        checked={assignNewBook}
-                        onCheckedChange={(v) => setAssignNewBook(v === true)}
-                      />
-                      <FieldDescription>
-                        If enabled, book range is unchanged; all leaves get the
-                        assignee.
-                      </FieldDescription>
+                  <DialogFooter className="sm:justify-between">
+                    <div className="flex flex-1 items-center justify-between gap-2 sm:justify-start">
+                      <DialogClose asChild>
+                        <Button variant="outline" type="button">
+                          Close
+                        </Button>
+                      </DialogClose>
                     </div>
-                  </FieldContent>
-                </Field>
 
-                <Field
-                  data-invalid={!!assignErrors.leafFrom}
-                  data-disabled={assignNewBook}
-                >
-                  <FieldLabel htmlFor="assign-leaf-from">Leaf from</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="assign-leaf-from"
-                      inputMode="numeric"
-                      value={assignLeafFrom}
-                      onChange={(e) => setAssignLeafFrom(e.target.value)}
-                      placeholder="e.g. 1"
-                      aria-invalid={!!assignErrors.leafFrom}
-                      disabled={assignNewBook}
-                    />
-                    <FieldError
-                      errors={
-                        assignErrors.leafFrom
-                          ? [{ message: assignErrors.leafFrom }]
-                          : []
-                      }
-                    />
-                  </FieldContent>
-                </Field>
-              </FieldGroup>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        disabled={!canAdd || busy}
+                        onClick={async () => {
+                          const ok = await addBook()
+                          if (!ok) return
+                          resetForm()
+                          setDialogOpen(false)
+                        }}
+                      >
+                        Add and close
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={!canAdd || busy}
+                        onClick={async () => {
+                          const ok = await addBook()
+                          if (!ok) return
+                          resetForm()
+                        }}
+                      >
+                        Add more
+                      </Button>
+                    </div>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
-              <DialogFooter className="sm:justify-between">
-                <DialogClose asChild>
-                  <Button variant="outline" type="button">
-                    Close
-                  </Button>
-                </DialogClose>
-
-                <Button
-                  type="button"
-                  disabled={!canAssign || busy}
-                  onClick={async () => {
-                    const ok = await assignBook()
-                    if (!ok) return
-                    resetAssignForm()
-                    setAssignDialogOpen(false)
-                  }}
-                >
-                  Assign and close
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog
-            open={accountDialogOpen}
-            onOpenChange={(open) => {
-              setAccountDialogOpen(open)
-              if (open) setAccountActionError(null)
-            }}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Account leaf"
-                  >
-                    <EqualIcon />
-                  </Button>
-                </DialogTrigger>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Account leaf</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Account leaf</DialogTitle>
-                <DialogDescription>
-                  Enter one leaf number to mark that leaf accounted. The leaf
-                  must already exist in consumption and be assigned to someone.
-                </DialogDescription>
-              </DialogHeader>
-
-              {accountActionError ? (
-                <p className="text-sm text-destructive" role="alert">
-                  {accountActionError}
-                </p>
-              ) : null}
-
-              <FieldGroup>
-                <Field data-invalid={!!accountErrors.leafNo}>
-                  <FieldLabel htmlFor="account-leaf-no">Leaf no.</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="account-leaf-no"
-                      inputMode="numeric"
-                      value={accountLeafNo}
-                      onChange={(e) => setAccountLeafNo(e.target.value)}
-                      placeholder="e.g. 42"
-                      aria-invalid={!!accountErrors.leafNo}
-                      autoComplete="off"
-                    />
-                    <FieldDescription>
-                      One leaf per submit — matches the global leaf number in
-                      your database.
-                    </FieldDescription>
-                    <FieldError
-                      errors={
-                        accountErrors.leafNo
-                          ? [{ message: accountErrors.leafNo }]
-                          : []
-                      }
-                    />
-                  </FieldContent>
-                </Field>
-              </FieldGroup>
-
-              <DialogFooter className="sm:justify-between">
-                <DialogClose asChild>
-                  <Button variant="outline" type="button">
-                    Close
-                  </Button>
-                </DialogClose>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    disabled={!canAccount || busy}
-                    onClick={async () => {
-                      const ok = await accountSingleLeaf()
-                      if (!ok) return
-                      resetAccountForm()
-                      setAccountDialogOpen(false)
-                    }}
-                  >
-                    Account and close
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={!canAccount || busy}
-                    onClick={async () => {
-                      const ok = await accountSingleLeaf()
-                      if (!ok) return
-                      resetAccountForm()
-                    }}
-                  >
-                    Account another
-                  </Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <ButtonGroup>
-            <Field orientation="horizontal">
-              <Input
-                type="search"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </Field>
-          </ButtonGroup>
-        </div>
-
-        <Button variant="outline" type="button" disabled={busy}>
-          Total Books: <span className="font-bold">{books.length}</span>
-        </Button>
-
-        <ButtonGroup>
-          <Button
-            variant={statusFilter === "current" ? "default" : "outline"}
-            type="button"
-            onClick={() =>
-              setStatusFilter((f) => (f === "current" ? "all" : "current"))
-            }
-          >
-            Current Books
-          </Button>
-          <Button
-            variant={statusFilter === "completed" ? "default" : "outline"}
-            type="button"
-            onClick={() =>
-              setStatusFilter((f) => (f === "completed" ? "all" : "completed"))
-            }
-          >
-            Completed Books
-          </Button>
-          <Button
-            variant={statusFilter === "store" ? "default" : "outline"}
-            type="button"
-            onClick={() =>
-              setStatusFilter((f) => (f === "store" ? "all" : "store"))
-            }
-          >
-            Stored Books
-          </Button>
-        </ButtonGroup>
-      </div>
-
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Running Book No.</TableHead>
-            <TableHead>Office</TableHead>
-            <TableHead>Leaf No.</TableHead>
-            <TableHead>Assigned To</TableHead>
-            <TableHead className="w-[110px] text-center">Accounted</TableHead>
-            {/* <TableHead className="w-[100px] text-right">Actions</TableHead> */}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {visibleBooks.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-muted-foreground">
-                No books match this view.
-              </TableCell>
-            </TableRow>
-          ) : (
-            visibleBooks.map((b) => (
-              <TableRow
-                key={b.id}
-                className="cursor-pointer hover:bg-muted/60"
-                tabIndex={0}
-                role="button"
-                aria-label={`Open leaf details for book ${b.bookNo}`}
-                onClick={() => setDetailBookId(b.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault()
-                    setDetailBookId(b.id)
-                  }
+              <Dialog
+                open={assignDialogOpen}
+                onOpenChange={(open) => {
+                  setAssignDialogOpen(open)
+                  if (open) setAssignActionError(null)
                 }}
               >
-                <TableCell className="font-medium">{b.bookNo}</TableCell>
-                <TableCell>{b.officeName ?? `Office #${b.officeId}`}</TableCell>
-                <TableCell className="tabular-nums">
-                  {b.leafFrom} - {b.leafTo}{" "}
-                  <span className="text-muted-foreground">
-                    ({b.leafTo - b.leafFrom + 1})
-                  </span>
-                </TableCell>
-                <TableCell>{b.assignedTo ?? "—"}</TableCell>
-                <TableCell className="text-center">
-                  <div className="flex justify-center">
-                    <Checkbox disabled checked={isBookFullyAccounted(b)} />
-                  </div>
-                </TableCell>
-                {/* <TableCell className="text-right">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Assign Books"
+                      >
+                        <MinusIcon />
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Assign Books</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Assign book</DialogTitle>
+                    <DialogDescription>
+                      Pick a book and an employee from the list, or add someone
+                      new. Optionally change the starting leaf.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {assignActionError ? (
+                    <p className="text-sm text-destructive" role="alert">
+                      {assignActionError}
+                    </p>
+                  ) : null}
+
+                  <FieldGroup>
+                    <Field data-invalid={!!assignErrors.bookNo}>
+                      <FieldLabel htmlFor="assign-book-no">
+                        Book number
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="assign-book-no"
+                          value={assignBookNo}
+                          onChange={(e) => setAssignBookNo(e.target.value)}
+                          placeholder="Type to search…"
+                          list="book-no-options"
+                          aria-invalid={!!assignErrors.bookNo}
+                          autoComplete="off"
+                        />
+                        <datalist id="book-no-options">
+                          {bookNoOptions.map((v) => (
+                            <option key={v} value={v} />
+                          ))}
+                        </datalist>
+                        <FieldError
+                          errors={
+                            assignErrors.bookNo
+                              ? [{ message: assignErrors.bookNo }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+
+                    <Field data-invalid={!!assignErrors.employee}>
+                      <FieldLabel htmlFor="assign-employee">
+                        Assigned to
+                      </FieldLabel>
+                      <FieldContent>
+                        <select
+                          id="assign-employee"
+                          className={cn(
+                            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                          )}
+                          value={assignEmployeeId}
+                          onChange={(e) => setAssignEmployeeId(e.target.value)}
+                          aria-invalid={!!assignErrors.employee}
+                        >
+                          <option value="">Select an employee</option>
+                          {employeesSortedForAssign.map((emp) => (
+                            <option key={emp.id} value={String(emp.id)}>
+                              {emp.name} ({emp.role})
+                            </option>
+                          ))}
+                          <option value="__new__">+ Add new employee…</option>
+                        </select>
+                        <FieldError
+                          errors={
+                            assignErrors.employee
+                              ? [{ message: assignErrors.employee }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+
+                    {assignEmployeeId === "__new__" ? (
+                      <>
+                        <Field data-invalid={!!assignErrors.newEmployeeName}>
+                          <FieldLabel htmlFor="assign-new-emp-name">
+                            New employee name
+                          </FieldLabel>
+                          <FieldContent>
+                            <Input
+                              id="assign-new-emp-name"
+                              value={assignNewEmployeeName}
+                              onChange={(e) =>
+                                setAssignNewEmployeeName(e.target.value)
+                              }
+                              placeholder="Full name"
+                              autoComplete="off"
+                              aria-invalid={!!assignErrors.newEmployeeName}
+                            />
+                            <FieldError
+                              errors={
+                                assignErrors.newEmployeeName
+                                  ? [{ message: assignErrors.newEmployeeName }]
+                                  : []
+                              }
+                            />
+                          </FieldContent>
+                        </Field>
+                        <Field data-invalid={!!assignErrors.newEmployeeRole}>
+                          <FieldLabel htmlFor="assign-new-emp-role">
+                            Role
+                          </FieldLabel>
+                          <FieldContent>
+                            <Input
+                              id="assign-new-emp-role"
+                              value={assignNewEmployeeRole}
+                              onChange={(e) =>
+                                setAssignNewEmployeeRole(e.target.value)
+                              }
+                              placeholder="e.g. Clerk"
+                              autoComplete="off"
+                              aria-invalid={!!assignErrors.newEmployeeRole}
+                            />
+                            <FieldDescription>
+                              They will be saved to Employees and assigned to
+                              this book.
+                            </FieldDescription>
+                            <FieldError
+                              errors={
+                                assignErrors.newEmployeeRole
+                                  ? [{ message: assignErrors.newEmployeeRole }]
+                                  : []
+                              }
+                            />
+                          </FieldContent>
+                        </Field>
+                      </>
+                    ) : null}
+
+                    <Field orientation="horizontal">
+                      <FieldLabel htmlFor="assign-new-book">
+                        New book
+                      </FieldLabel>
+                      <FieldContent>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="assign-new-book"
+                            checked={assignNewBook}
+                            onCheckedChange={(v) =>
+                              setAssignNewBook(v === true)
+                            }
+                          />
+                          <FieldDescription>
+                            If enabled, book range is unchanged; all leaves get
+                            the assignee.
+                          </FieldDescription>
+                        </div>
+                      </FieldContent>
+                    </Field>
+
+                    <Field
+                      data-invalid={!!assignErrors.leafFrom}
+                      data-disabled={assignNewBook}
+                    >
+                      <FieldLabel htmlFor="assign-leaf-from">
+                        Leaf from
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="assign-leaf-from"
+                          inputMode="numeric"
+                          value={assignLeafFrom}
+                          onChange={(e) => setAssignLeafFrom(e.target.value)}
+                          placeholder="e.g. 1"
+                          aria-invalid={!!assignErrors.leafFrom}
+                          disabled={assignNewBook}
+                        />
+                        <FieldError
+                          errors={
+                            assignErrors.leafFrom
+                              ? [{ message: assignErrors.leafFrom }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                  </FieldGroup>
+
+                  <DialogFooter className="sm:justify-between">
+                    <DialogClose asChild>
+                      <Button variant="outline" type="button">
+                        Close
+                      </Button>
+                    </DialogClose>
+
+                    <Button
+                      type="button"
+                      disabled={!canAssign || busy}
+                      onClick={async () => {
+                        const ok = await assignBook()
+                        if (!ok) return
+                        resetAssignForm()
+                        setAssignDialogOpen(false)
+                      }}
+                    >
+                      Assign and close
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog
+                open={accountDialogOpen}
+                onOpenChange={(open) => {
+                  setAccountDialogOpen(open)
+                  if (open) setAccountActionError(null)
+                }}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Account leaf"
+                      >
+                        <EqualIcon />
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Account leaf</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Account leaf</DialogTitle>
+                    <DialogDescription>
+                      Enter one leaf number to mark that leaf accounted. The
+                      leaf must already exist in consumption and be assigned to
+                      someone.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {accountActionError ? (
+                    <p className="text-sm text-destructive" role="alert">
+                      {accountActionError}
+                    </p>
+                  ) : null}
+
+                  <FieldGroup>
+                    <Field data-invalid={!!accountErrors.leafNo}>
+                      <FieldLabel htmlFor="account-leaf-no">
+                        Leaf no.
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="account-leaf-no"
+                          inputMode="numeric"
+                          value={accountLeafNo}
+                          onChange={(e) => setAccountLeafNo(e.target.value)}
+                          placeholder="e.g. 42"
+                          aria-invalid={!!accountErrors.leafNo}
+                          autoComplete="off"
+                        />
+                        <FieldDescription>
+                          One leaf per submit — matches the global leaf number
+                          in your database.
+                        </FieldDescription>
+                        <FieldError
+                          errors={
+                            accountErrors.leafNo
+                              ? [{ message: accountErrors.leafNo }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                  </FieldGroup>
+
+                  <DialogFooter className="sm:justify-between">
+                    <DialogClose asChild>
+                      <Button variant="outline" type="button">
+                        Close
+                      </Button>
+                    </DialogClose>
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        disabled={!canAccount || busy}
+                        onClick={async () => {
+                          const ok = await accountSingleLeaf()
+                          if (!ok) return
+                          resetAccountForm()
+                          setAccountDialogOpen(false)
+                        }}
+                      >
+                        Account and close
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={!canAccount || busy}
+                        onClick={async () => {
+                          const ok = await accountSingleLeaf()
+                          if (!ok) return
+                          resetAccountForm()
+                        }}
+                      >
+                        Account another
+                      </Button>
+                    </div>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <ButtonGroup>
+                <Field orientation="horizontal">
+                  <Input
+                    type="search"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </Field>
+              </ButtonGroup>
+            </div>
+
+            <Button variant="outline" type="button" disabled={busy}>
+              Total Books: <span className="font-bold">{books.length}</span>
+            </Button>
+
+            <ButtonGroup>
+              <Button
+                variant={statusFilter === "current" ? "default" : "outline"}
+                type="button"
+                onClick={() =>
+                  setStatusFilter((f) => (f === "current" ? "all" : "current"))
+                }
+              >
+                Current Books
+              </Button>
+              <Button
+                variant={statusFilter === "completed" ? "default" : "outline"}
+                type="button"
+                onClick={() =>
+                  setStatusFilter((f) =>
+                    f === "completed" ? "all" : "completed"
+                  )
+                }
+              >
+                Completed Books
+              </Button>
+              <Button
+                variant={statusFilter === "store" ? "default" : "outline"}
+                type="button"
+                onClick={() =>
+                  setStatusFilter((f) => (f === "store" ? "all" : "store"))
+                }
+              >
+                Stored Books
+              </Button>
+            </ButtonGroup>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Running Book No.</TableHead>
+                <TableHead>Office</TableHead>
+                <TableHead>Leaf No.</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead className="w-[110px] text-center">
+                  Accounted
+                </TableHead>
+                {/* <TableHead className="w-[100px] text-right">Actions</TableHead> */}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleBooks.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-muted-foreground">
+                    No books match this view.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                visibleBooks.map((b) => (
+                  <TableRow
+                    key={b.id}
+                    className="cursor-pointer hover:bg-muted/60"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Open leaf details for book ${b.bookNo}`}
+                    onClick={() => setDetailBookId(b.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        setDetailBookId(b.id)
+                      }
+                    }}
+                  >
+                    <TableCell className="font-medium">{b.bookNo}</TableCell>
+                    <TableCell>
+                      {b.officeName ?? `Office #${b.officeId}`}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {b.leafFrom} - {b.leafTo}{" "}
+                      <span className="text-muted-foreground">
+                        ({b.leafTo - b.leafFrom + 1})
+                      </span>
+                    </TableCell>
+                    <TableCell>{b.assignedTo ?? "—"}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <Checkbox disabled checked={isBookFullyAccounted(b)} />
+                      </div>
+                    </TableCell>
+                    {/* <TableCell className="text-right">
                   {b.bookStatus === "completed" ||
                   b.bookStatus === "store" ? null : (
                     <Button
@@ -1325,11 +1358,11 @@ export default function BookManager({
                     </Button>
                   )}
                 </TableCell> */}
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </>
       )}
     </div>
