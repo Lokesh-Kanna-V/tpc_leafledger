@@ -40,6 +40,7 @@ import {
 import { ChevronLeft, EqualIcon, MinusIcon, PlusIcon } from "lucide-react"
 import {
   displayLeafSpanForBook,
+  minAssignableLeaf,
   parseLeafNo,
   type BookRow,
   type BookStatus,
@@ -296,6 +297,7 @@ export default function BookManager({
       newEmployeeName?: string
       newEmployeeRole?: string
       leafFrom?: string
+      assignBlocked?: string
     } = {}
 
     if (!assignBookNo.trim()) e.bookNo = "Book number is required."
@@ -312,6 +314,23 @@ export default function BookManager({
       }
     }
 
+    const apiBook = apiBooks.find(
+      (b) => b.book_number === assignBookNo.trim()
+    )
+    const span = apiBook ? displayLeafSpanForBook(apiBook) : null
+    const minLeaf =
+      apiBook && span ? minAssignableLeaf(apiBook, consumptions) : null
+
+    if (
+      apiBook &&
+      span &&
+      minLeaf !== null &&
+      minLeaf > span.to
+    ) {
+      e.assignBlocked =
+        "Every leaf in this book is already accounted through the end of the range. Nothing left to assign."
+    }
+
     if (!assignNewBook) {
       if (!assignLeafFrom.trim()) e.leafFrom = "Leaf from is required."
       const from = Number.parseInt(assignLeafFrom, 10)
@@ -321,10 +340,6 @@ export default function BookManager({
       ) {
         e.leafFrom = "Leaf from must be a number."
       }
-      const apiBook = apiBooks.find(
-        (b) => b.book_number === assignBookNo.trim()
-      )
-      const span = apiBook ? displayLeafSpanForBook(apiBook) : null
       if (
         span &&
         assignLeafFrom.trim() &&
@@ -332,6 +347,16 @@ export default function BookManager({
         (from < span.from || from > span.to)
       ) {
         e.leafFrom = `Must be between ${span.from} and ${span.to}.`
+      }
+      if (
+        span &&
+        minLeaf !== null &&
+        assignLeafFrom.trim() &&
+        Number.isFinite(from) &&
+        from < minLeaf &&
+        !e.leafFrom
+      ) {
+        e.leafFrom = `Must be at least ${minLeaf}. Leaves ${span.from}–${minLeaf - 1} include accounted leaves and cannot be reassigned.`
       }
     }
 
@@ -344,6 +369,7 @@ export default function BookManager({
     assignLeafFrom,
     assignNewBook,
     apiBooks,
+    consumptions,
     employees,
   ])
 
@@ -352,7 +378,8 @@ export default function BookManager({
     !assignErrors.employee &&
     !assignErrors.newEmployeeName &&
     !assignErrors.newEmployeeRole &&
-    !assignErrors.leafFrom
+    !assignErrors.leafFrom &&
+    !assignErrors.assignBlocked
 
   const accountErrors = useMemo(() => {
     const e: { leafNo?: string } = {}
@@ -453,8 +480,18 @@ export default function BookManager({
       }
 
       const span = displayLeafSpanForBook(apiBook)
-      const fromL = assignNewBook ? span.from : leafFromNum!
+      const minLeaf = minAssignableLeaf(apiBook, consumptions)
+      const fromL = assignNewBook
+        ? minLeaf
+        : Math.max(leafFromNum!, minLeaf)
       const endL = span.to
+
+      if (fromL > endL) {
+        setAssignActionError(
+          "No leaves left to assign in this book (all accounted through the end of the range)."
+        )
+        return false
+      }
 
       // Only update consumption rows — do not change book.leaf_no_from, or later
       // assignments would shrink the visible range and hide leaves assigned earlier.
@@ -1046,8 +1083,9 @@ export default function BookManager({
                             }
                           />
                           <FieldDescription>
-                            If enabled, book range is unchanged; all leaves get
-                            the assignee.
+                            If enabled, book range is unchanged; every leaf from
+                            the first assignable number through the end of the range
+                            gets this assignee. Accounted leaves are skipped.
                           </FieldDescription>
                         </div>
                       </FieldContent>
@@ -1079,6 +1117,12 @@ export default function BookManager({
                         />
                       </FieldContent>
                     </Field>
+
+                    {assignErrors.assignBlocked ? (
+                      <p className="text-destructive text-sm" role="alert">
+                        {assignErrors.assignBlocked}
+                      </p>
+                    ) : null}
                   </FieldGroup>
 
                   <DialogFooter className="sm:justify-between">

@@ -25,6 +25,39 @@ export function parseLeafNo(leafNo: string): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+function consumptionBookId(
+  bookId: Consumption["book_id"]
+): number | null {
+  if (bookId === null || bookId === undefined) return null
+  if (typeof bookId === "number" && Number.isInteger(bookId)) return bookId
+  const n = Number.parseInt(String(bookId).trim(), 10)
+  return Number.isInteger(n) ? n : null
+}
+
+/**
+ * First leaf index in this book that may receive a (re)assignment:
+ * max(accounted leaf in range) + 1, never below the book's range start.
+ */
+export function minAssignableLeaf(
+  apiBook: Book,
+  consumptions: Consumption[]
+): number {
+  const span = displayLeafSpanForBook(apiBook)
+  let maxAccounted: number | null = null
+  const bid = apiBook.id
+
+  for (const c of consumptions) {
+    if (consumptionBookId(c.book_id) !== bid) continue
+    if (!c.accounted) continue
+    const n = parseLeafNo(String(c.leaf_no))
+    if (n === null || n < span.from || n > span.to) continue
+    maxAccounted = maxAccounted === null ? n : Math.max(maxAccounted, n)
+  }
+
+  if (maxAccounted === null) return span.from
+  return Math.max(span.from, maxAccounted + 1)
+}
+
 export function displayLeafSpanForBook(b: Book): { from: number; to: number } {
   return { from: b.leaf_no_from, to: b.leaf_no_to }
 }
@@ -43,7 +76,7 @@ export function rowsFromDatabase(
       displayLeafSpanForBook(b)
 
     const leavesInBook = consumptions.filter((c) => {
-      if (c.book_id !== b.id) return false
+      if (consumptionBookId(c.book_id) !== b.id) return false
       const n = parseLeafNo(c.leaf_no)
       return n !== null && n >= displayLeafFrom && n <= displayLeafTo
     })
