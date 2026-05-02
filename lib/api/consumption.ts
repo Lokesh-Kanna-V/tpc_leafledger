@@ -1,4 +1,4 @@
-import { ApiError, parseResponse } from "@/lib/api/request"
+import { parseResponse } from "@/lib/api/request"
 
 export type Consumption = {
   book_id: number | null
@@ -30,6 +30,13 @@ function consumptionPath(bookId: number, leafNo: string): string {
   return `/api/consumption/${encodeURIComponent(String(bookId))}/${encodeURIComponent(leafNo)}`
 }
 
+/** Match URL and DB storage (e.g. "05" vs "5"). */
+export function canonicalLeafNo(leafNo: string): string {
+  const t = String(leafNo).trim()
+  if (/^\d+$/.test(t)) return String(Number.parseInt(t, 10))
+  return t
+}
+
 export async function getConsumptions(): Promise<Consumption[]> {
   const response = await fetch("/api/consumption", { method: "GET" })
   const data = await parseResponse<Consumption[]>(response)
@@ -39,10 +46,14 @@ export async function getConsumptions(): Promise<Consumption[]> {
 export async function createConsumption(
   body: CreateConsumptionInput
 ): Promise<Consumption> {
+  const payload: CreateConsumptionInput = {
+    ...body,
+    leaf_no: canonicalLeafNo(body.leaf_no),
+  }
   const response = await fetch("/api/consumption", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   })
   return parseResponse<Consumption>(response)
 }
@@ -51,7 +62,8 @@ export async function getConsumption(
   bookId: number,
   leafNo: string
 ): Promise<Consumption> {
-  const response = await fetch(consumptionPath(bookId, leafNo), {
+  const key = canonicalLeafNo(leafNo)
+  const response = await fetch(consumptionPath(bookId, key), {
     method: "GET",
   })
   return parseResponse<Consumption>(response)
@@ -62,7 +74,8 @@ export async function updateConsumption(
   leafNo: string,
   body: UpdateConsumptionInput
 ): Promise<Consumption> {
-  const response = await fetch(consumptionPath(bookId, leafNo), {
+  const key = canonicalLeafNo(leafNo)
+  const response = await fetch(consumptionPath(bookId, key), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -74,37 +87,31 @@ export async function deleteConsumption(
   bookId: number,
   leafNo: string
 ): Promise<{ ok: true }> {
-  const response = await fetch(consumptionPath(bookId, leafNo), {
+  const key = canonicalLeafNo(leafNo)
+  const response = await fetch(consumptionPath(bookId, key), {
     method: "DELETE",
   })
   return parseResponse<{ ok: true }>(response)
 }
 
+/** Assign/update one leaf without relying on POST 409 + PUT (legacy rows may not match PUT filters). */
 export async function upsertConsumptionAssignment(
   bookId: number,
   leafNo: string,
   params: UpdateConsumptionInput
 ): Promise<Consumption> {
-  try {
-    return await updateConsumption(bookId, leafNo, params)
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 404) {
-      try {
-        return await createConsumption({
-          book_id: bookId,
-          leaf_no: leafNo,
-          user_id: params.user_id ?? null,
-          assigned_date: params.assigned_date,
-          accounted: params.accounted ?? false,
-          accounted_date: params.accounted_date,
-        })
-      } catch (e2) {
-        if (e2 instanceof ApiError && e2.status === 409) {
-          return await updateConsumption(bookId, leafNo, params)
-        }
-        throw e2
-      }
-    }
-    throw e
-  }
+  const key = canonicalLeafNo(leafNo)
+  const response = await fetch("/api/consumption/upsert", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      book_id: bookId,
+      leaf_no: key,
+      user_id: params.user_id ?? null,
+      assigned_date: params.assigned_date,
+      accounted: params.accounted ?? false,
+      accounted_date: params.accounted_date,
+    }),
+  })
+  return parseResponse<Consumption>(response)
 }

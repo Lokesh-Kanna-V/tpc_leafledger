@@ -26,6 +26,11 @@ export async function POST(request) {
 
   if (typeof leaf_no !== "string" || !leaf_no.trim()) return jsonError("leaf_no is required");
 
+  let leafNorm = leaf_no.trim();
+  if (/^\d+$/.test(leafNorm)) {
+    leafNorm = String(Number.parseInt(leafNorm, 10));
+  }
+
   const userIdOrNull = user_id === undefined || user_id === null ? null : user_id;
   if (userIdOrNull !== null && !Number.isInteger(userIdOrNull)) {
     return jsonError("user_id must be an integer or null");
@@ -56,7 +61,7 @@ export async function POST(request) {
        RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
       [
         book_id,
-        leaf_no.trim(),
+        leafNorm,
         userIdOrNull,
         assigned_date.trim(),
         accountedValue,

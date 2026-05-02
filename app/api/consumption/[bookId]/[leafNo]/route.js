@@ -8,15 +8,29 @@ function parseBookId(raw) {
   return Number.isInteger(n) ? n : null;
 }
 
+/** Param index for leaf in URL (e.g. 2 for GET, 6 for PUT). */
+function leafNoPredicate(leafParam) {
+  return `(
+    leaf_no::text = $${leafParam}
+    OR trim(leaf_no::text) = trim($${leafParam}::text)
+    OR (
+      trim(leaf_no::text) ~ '^-?[0-9]+$'
+      AND trim($${leafParam}::text) ~ '^-?[0-9]+$'
+      AND trim(leaf_no::text)::bigint = trim($${leafParam}::text)::bigint
+    )
+  )`;
+}
+
 export async function GET(_req, { params }) {
-  const { bookId: bookIdRaw, leafNo } = await params;
+  const { bookId: bookIdRaw, leafNo: leafNoRaw } = await params;
   const bookId = parseBookId(bookIdRaw);
+  const leafNo = decodeURIComponent(String(leafNoRaw ?? "")).trim();
   if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
 
   const result = await query(
     `SELECT book_id, leaf_no, user_id, assigned_date, accounted, accounted_date
      FROM consumption
-     WHERE book_id = $1 AND leaf_no = $2`,
+     WHERE book_id = $1 AND ${leafNoPredicate(2)}`,
     [bookId, leafNo],
   );
   const row = result.rows[0];
@@ -25,8 +39,9 @@ export async function GET(_req, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const { bookId: bookIdRaw, leafNo } = await params;
+  const { bookId: bookIdRaw, leafNo: leafNoRaw } = await params;
   const bookId = parseBookId(bookIdRaw);
+  const leafNo = decodeURIComponent(String(leafNoRaw ?? "")).trim();
   if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
 
   let body;
@@ -70,7 +85,7 @@ export async function PUT(request, { params }) {
            assigned_date = $2,
            accounted = $3,
            accounted_date = $4
-       WHERE book_id = $5 AND leaf_no = $6
+       WHERE book_id = $5 AND ${leafNoPredicate(6)}
        RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
       [userIdOrNull, assigned_date.trim(), accounted, accountedDateValue, bookId, leafNo],
     );
@@ -86,12 +101,13 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(_req, { params }) {
-  const { bookId: bookIdRaw, leafNo } = await params;
+  const { bookId: bookIdRaw, leafNo: leafNoRaw } = await params;
   const bookId = parseBookId(bookIdRaw);
+  const leafNo = decodeURIComponent(String(leafNoRaw ?? "")).trim();
   if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
 
   const result = await query(
-    "DELETE FROM consumption WHERE book_id = $1 AND leaf_no = $2 RETURNING leaf_no",
+    `DELETE FROM consumption WHERE book_id = $1 AND ${leafNoPredicate(2)} RETURNING leaf_no`,
     [bookId, leafNo],
   );
   if (!result.rows[0]) return jsonError("Consumption not found", 404);

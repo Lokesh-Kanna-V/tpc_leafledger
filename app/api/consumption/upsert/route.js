@@ -1,0 +1,143 @@
+import { query } from "@/lib/db";
+import { jsonError, pgCode } from "@/lib/http";
+
+export const runtime = "nodejs";
+
+function leafNoPredicate(leafParam) {
+  return `(
+    leaf_no::text = $${leafParam}
+    OR trim(leaf_no::text) = trim($${leafParam}::text)
+    OR (
+      trim(leaf_no::text) ~ '^-?[0-9]+$'
+      AND trim($${leafParam}::text) ~ '^-?[0-9]+$'
+      AND trim(leaf_no::text)::bigint = trim($${leafParam}::text)::bigint
+    )
+  )`;
+}
+
+function normalizeLeaf(leaf_no) {
+  const t = String(leaf_no ?? "").trim();
+  if (/^\d+$/.test(t)) return String(Number.parseInt(t, 10));
+  return t;
+}
+
+export async function POST(request) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("Invalid JSON body");
+  }
+
+  const { book_id, leaf_no, user_id, assigned_date, accounted, accounted_date } = body ?? {};
+
+  if (!Number.isInteger(book_id)) return jsonError("book_id is required (integer)");
+  if (typeof leaf_no !== "string" || !leaf_no.trim()) return jsonError("leaf_no is required");
+
+  const leafNorm = normalizeLeaf(leaf_no);
+
+  const userIdOrNull = user_id === undefined || user_id === null ? null : user_id;
+  if (userIdOrNull !== null && !Number.isInteger(userIdOrNull)) {
+    return jsonError("user_id must be an integer or null");
+  }
+  if (typeof assigned_date !== "string" || !assigned_date.trim())
+    return jsonError("assigned_date is required");
+
+  const accountedValue = accounted === undefined ? false : accounted;
+  if (typeof accountedValue !== "boolean") return jsonError("accounted must be boolean");
+
+  const accountedDateValue =
+    accounted_date === undefined || accounted_date === null
+      ? null
+      : typeof accounted_date === "string"
+        ? accounted_date
+        : undefined;
+  if (accountedDateValue === undefined) return jsonError("accounted_date must be a string or null");
+  if (accountedValue && !accountedDateValue) {
+    return jsonError("accounted_date is required when accounted is true");
+  }
+
+  const returning =
+    "RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date";
+
+  try {
+    let result = await query(
+      `UPDATE consumption
+       SET user_id = $1,
+           assigned_date = $2,
+           accounted = $3,
+           accounted_date = $4
+       WHERE book_id = $5 AND ${leafNoPredicate(6)}
+       ${returning}`,
+      [
+        userIdOrNull,
+        assigned_date.trim(),
+        accountedValue,
+        accountedDateValue,
+        book_id,
+        leafNorm,
+      ],
+    );
+    if (result.rows[0]) return Response.json(result.rows[0]);
+
+    try {
+      result = await query(
+        `INSERT INTO consumption
+          (book_id, leaf_no, user_id, assigned_date, accounted, accounted_date)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ${returning}`,
+        [
+          book_id,
+          leafNorm,
+          userIdOrNull,
+          assigned_date.trim(),
+          accountedValue,
+          accountedDateValue,
+        ],
+      );
+      return Response.json(result.rows[0], { status: 201 });
+    } catch (err) {
+      if (pgCode(err) !== "23505") throw err;
+    }
+
+    result = await query(
+      `UPDATE consumption
+       SET book_id = $1,
+           user_id = $2,
+           assigned_date = $3,
+           accounted = $4,
+           accounted_date = $5
+       WHERE (${leafNoPredicate(6)}) AND book_id IS NULL
+       ${returning}`,
+      [
+        book_id,
+        userIdOrNull,
+        assigned_date.trim(),
+        accountedValue,
+        accountedDateValue,
+        leafNorm,
+      ],
+    );
+    if (result.rows[0]) return Response.json(result.rows[0]);
+
+    const clash = await query(
+      `SELECT book_id FROM consumption WHERE ${leafNoPredicate(1)} LIMIT 1`,
+      [leafNorm],
+    );
+    const ownerId = clash.rows[0]?.book_id;
+    if (ownerId != null && ownerId !== book_id) {
+      return jsonError(
+        `Leaf ${leafNorm} is already tied to book ${ownerId}. Change leaf ranges or fix the database.`,
+        409,
+      );
+    }
+
+    return jsonError(`Could not upsert leaf ${leafNorm} for book ${book_id}.`, 409);
+  } catch (err) {
+    const code = pgCode(err);
+    if (code === "23503") return jsonError("Invalid user_id or book_id", 400);
+    if (code === "23514") return jsonError("Invalid accounted/accounted_date", 400);
+    console.error("POST /api/consumption/upsert", err);
+    return jsonError(err instanceof Error ? err.message : "Upsert failed", 500);
+  }
+}
