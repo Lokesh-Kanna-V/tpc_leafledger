@@ -6,6 +6,7 @@ services:
       POSTGRES_USER: leafledger
       POSTGRES_PASSWORD: leafledger
       POSTGRES_DB: leafledger
+      TZ: Asia/Kolkata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -17,15 +18,34 @@ services:
       retries: 10
 
   app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: leafledger-app
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      TZ: Asia/Kolkata
       DATABASE_URL: postgresql://leafledger:leafledger@db:5432/leafledger
       # Override in `.env` or your shell; default is for local Docker only.
       JWT_SECRET: ${JWT_SECRET:-leafledger-docker-dev-secret-replace-for-production}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: leafledger-app
+    restart: unless-stopped
+    command: ["node", "scripts/overdue-worker.mjs"]
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Kolkata
+      DATABASE_URL: postgresql://leafledger:leafledger@db:5432/leafledger
     depends_on:
       db:
         condition: service_healthy

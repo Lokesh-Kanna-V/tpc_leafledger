@@ -8,16 +8,19 @@ import {
   LeafIcon,
   BookOpenIcon,
   Users2Icon,
+  BellIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 import BookManager from "@/components/book-manager"
 import Dashboard from "@/components/dashboard"
 import Employees from "@/components/employees"
+import Alerts from "@/components/alerts"
 import { getBooks } from "@/lib/api/books"
 import { getConsumptions } from "@/lib/api/consumption"
 import { getEmployees } from "@/lib/api/employees"
 import { getOffices } from "@/lib/api/offices"
+import { getOverdueAlerts } from "@/lib/api/alerts"
 import type { Book } from "@/lib/api/books"
 import type { Consumption } from "@/lib/api/consumption"
 import type { Employee } from "@/lib/api/employees"
@@ -32,10 +35,11 @@ type NavItem = {
   id: number
 }
 
-const mainNav: NavItem[] = [
+const mainNav = (alertCount: number): NavItem[] => [
   { label: "Dashboard", icon: LayoutDashboard, id: 0 },
   { label: "Book Manager", icon: BookOpenIcon, id: 1 },
   { label: "Employees", icon: Users2Icon, id: 2 },
+  { label: "Alerts", icon: BellIcon, id: 3, badge: alertCount || undefined },
 ]
 
 function NavSection({
@@ -121,6 +125,7 @@ export default function Home() {
   const [consumptions, setConsumptions] = useState<Consumption[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [offices, setOffices] = useState<Office[]>([])
+  const [alertCount, setAlertCount] = useState<number>(0)
   const [dataLoading, setDataLoading] = useState(true)
   const [dataError, setDataError] = useState<string | null>(null)
 
@@ -137,6 +142,12 @@ export default function Home() {
       setConsumptions(c)
       setEmployees(e)
       setOffices(o)
+      try {
+        const alerts = await getOverdueAlerts()
+        setAlertCount(alerts.length)
+      } catch {
+        setAlertCount(0)
+      }
       setDataError(null)
     } catch (err) {
       setDataError(
@@ -205,7 +216,7 @@ export default function Home() {
         <nav className="flex-1 space-y-4 overflow-hidden px-2 py-3">
           <NavSection
             label="Main"
-            items={mainNav}
+            items={mainNav(alertCount)}
             active={active}
             collapsed={collapsed}
             onSelect={setActive}
@@ -288,6 +299,16 @@ export default function Home() {
             ) : (
               <Employees employees={employees} onReload={reloadData} />
             )}
+          </>
+        ) : active === "Alerts" ? (
+          <>
+            <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+              <BellIcon />
+              <h1 className="text-xl font-bold">ALERTS</h1>
+            </div>
+            <div className="mt-6">
+              <Alerts />
+            </div>
           </>
         ) : null}
       </div>

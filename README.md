@@ -30,7 +30,9 @@ Download Docker Desktop and install it.
 
 Open terminal in this folder and run:
 
-docker compose up -d
+```bash
+docker compose up -d --build
+```
 
 ## 3. Open the app
 
@@ -42,4 +44,5 @@ docker compose down
 
 ## Important
 
-- Do NOT run: docker compose down -v (this deletes all data)
+- **Data reset**: `docker compose down -v` deletes all database data (fresh start).
+- **First run after switching to Prisma**: if you already had tables created manually, Prisma will “baseline” the initial migration automatically on app start, then apply new migrations normally.

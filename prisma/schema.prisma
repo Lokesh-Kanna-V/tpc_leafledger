@@ -14,6 +14,10 @@ enum BookStatus {
   store
 }
 
+enum AlertType {
+  ACCOUNTING_OVERDUE
+}
+
 model Office {
   id    Int    @id @default(autoincrement())
   name  String @unique
@@ -42,6 +46,7 @@ model Book {
   leaf_no_to             Int
   book_status            BookStatus
   consumptions           Consumption[]
+  alerts                 Alert[]
 
   @@map("book")
 }
@@ -58,4 +63,19 @@ model Consumption {
 
   @@id([book_id, leaf_no])
   @@map("consumption")
+}
+
+model Alert {
+  id        Int       @id @default(autoincrement())
+  type      AlertType
+  book_id   Int?
+  book      Book?     @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  payload   Json
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  resolvedAt DateTime?
+
+  @@unique([type, book_id])
+  @@map("alert")
 }
