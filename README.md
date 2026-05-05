@@ -19,3 +19,27 @@ To use the components in your app, import them as follows:
 ```tsx
 import { Button } from "@/components/ui/button";
 ```
+
+# LeafLedger Setup
+
+## 1. Install Docker
+
+Download Docker Desktop and install it.
+
+## 2. Start the app
+
+Open terminal in this folder and run:
+
+docker compose up -d
+
+## 3. Open the app
+
+http://localhost:3000
+
+## 4. Stop the app
+
+docker compose down
+
+## Important
+
+- Do NOT run: docker compose down -v (this deletes all data)

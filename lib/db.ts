@@ -1,27 +1,29 @@
-import { Pool, type QueryResultRow } from "pg"
+import { PrismaClient } from "@prisma/client"
+import type { QueryResultRow } from "pg"
 
-const connectionString = process.env.DATABASE_URL
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
-const globalForPg = globalThis as unknown as { __leafledgerPgPool?: Pool }
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["error", "warn"]
+        : ["error"],
+  })
 
-function createPool(): Pool {
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is not set")
-  }
-  return new Pool({ connectionString })
-}
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
 
-function getPool(): Pool {
-  if (!globalForPg.__leafledgerPgPool) {
-    globalForPg.__leafledgerPgPool = createPool()
-  }
-  return globalForPg.__leafledgerPgPool
-}
-
+/**
+ * Runs a parameterized Postgres query via Prisma (same `$1` placeholders as `pg`).
+ * Keeps existing API route SQL working while migrations are managed by Prisma Migrate.
+ */
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
-  values?: unknown[]
+  values?: unknown[],
 ): Promise<{ rows: T[] }> {
-  const result = await getPool().query<T>(text, values)
-  return { rows: result.rows }
+  const rows = values?.length
+    ? await prisma.$queryRawUnsafe<T[]>(text, ...values)
+    : await prisma.$queryRawUnsafe<T[]>(text)
+  return { rows }
 }

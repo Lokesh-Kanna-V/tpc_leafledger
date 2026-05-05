@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookStatus {
+  current
+  completed
+  store
+}
+
+model Office {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  books Book[]
+
+  @@map("offices")
+}
+
+model Employee {
+  id           Int           @id @default(autoincrement())
+  name         String
+  role         String
+  password     String?
+  consumptions Consumption[]
+
+  @@map("employee")
+}
+
+model Book {
+  id                     Int        @id @default(autoincrement())
+  office_id              Int
+  office                 Office     @relation(fields: [office_id], references: [id])
+  book_number            String     @unique
+  initial_assigned_date  DateTime?  @db.Date
+  leaf_no_from           Int
+  leaf_no_to             Int
+  book_status            BookStatus
+  consumptions           Consumption[]
+
+  @@map("book")
+}
+
+model Consumption {
+  book_id         Int
+  leaf_no         String
+  book            Book      @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  user_id         Int?
+  employee        Employee? @relation(fields: [user_id], references: [id])
+  assigned_date   DateTime  @db.Date
+  accounted       Boolean   @default(false)
+  accounted_date  DateTime? @db.Date
+
+  @@id([book_id, leaf_no])
+  @@map("consumption")
+}
