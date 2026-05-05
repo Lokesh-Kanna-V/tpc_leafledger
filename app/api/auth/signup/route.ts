@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 
 import { hashPassword } from "@/lib/auth/password"
 import { query } from "@/lib/db"
-import { jsonError, pgCode } from "@/lib/http"
+import { humanizePgError, jsonError, pgCode } from "@/lib/http"
 
 export const runtime = "nodejs"
 
@@ -66,6 +66,9 @@ export async function POST(request: Request) {
       { status: 201 },
     )
   } catch (err) {
+    const human = humanizePgError(err)
+    if (human) return jsonError(human.message, human.status)
+
     if (pgCode(err) === "23505") {
       return jsonError("An employee with this name already exists", 409)
     }

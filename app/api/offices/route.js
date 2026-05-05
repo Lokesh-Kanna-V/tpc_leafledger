@@ -1,5 +1,5 @@
 import { query } from "@/lib/db"
-import { jsonError, pgCode } from "@/lib/http"
+import { humanizePgError, jsonError, pgCode } from "@/lib/http"
 
 export const runtime = "nodejs"
 
@@ -28,6 +28,9 @@ export async function POST(request) {
     )
     return Response.json(result.rows[0], { status: 201 })
   } catch (err) {
+    const human = humanizePgError(err)
+    if (human) return jsonError(human.message, human.status)
+
     if (pgCode(err) === "23505")
       return jsonError("Office name already exists", 409)
     return jsonError("Failed to create office", 500)

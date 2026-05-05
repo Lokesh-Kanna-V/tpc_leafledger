@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { cleanDbMessage } from "@/lib/http";
 
 export async function GET() {
   try {
@@ -16,7 +17,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? cleanDbMessage(error.message) : "Unknown error",
       },
       { status: 500 },
     );

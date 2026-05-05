@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { asInt, jsonError, pgCode } from "@/lib/http";
+import { asInt, humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -66,7 +66,7 @@ export async function PUT(request, { params }) {
       `UPDATE book
        SET office_id = $1,
            book_number = $2,
-           initial_assigned_date = $3,
+           initial_assigned_date = $3::date,
            leaf_no_from = $4,
            leaf_no_to = $5,
            book_status = $6
@@ -86,6 +86,9 @@ export async function PUT(request, { params }) {
     if (!book) return jsonError("Book not found", 404);
     return Response.json(book);
   } catch (err) {
+    const human = humanizePgError(err);
+    if (human) return jsonError(human.message, human.status);
+
     const code = pgCode(err);
     if (code === "23505") return jsonError("book_number already exists", 409);
     if (code === "23503") return jsonError("Invalid office_id", 400);

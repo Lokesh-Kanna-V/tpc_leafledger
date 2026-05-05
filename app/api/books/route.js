@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { jsonError, pgCode } from "@/lib/http";
+import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -44,16 +44,26 @@ export async function POST(request) {
         : undefined;
   if (dateValue === undefined) return jsonError("initial_assigned_date must be a string or null");
 
+  const derivedStatus =
+    dateValue === null
+      ? "store"
+      : book_status === "current" || book_status === "completed" || book_status === "store"
+        ? book_status
+        : "current";
+
   try {
     const result = await query(
       `INSERT INTO book
         (office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       VALUES ($1, $2, $3::date, $4, $5, $6)
        RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status`,
-      [office_id, book_number.trim(), dateValue, leaf_no_from, leaf_no_to, book_status],
+      [office_id, book_number.trim(), dateValue, leaf_no_from, leaf_no_to, derivedStatus],
     );
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {
+    const human = humanizePgError(err);
+    if (human) return jsonError(human.message, human.status);
+
     const code = pgCode(err);
     if (code === "23505") return jsonError("book_number already exists", 409);
     if (code === "23503") return jsonError("Invalid office_id", 400);

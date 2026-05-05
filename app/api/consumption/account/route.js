@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { jsonError, pgCode } from "@/lib/http";
+import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -93,7 +93,7 @@ export async function POST(request) {
     const upd = await query(
       `UPDATE consumption
        SET accounted = true,
-           accounted_date = $1
+           accounted_date = $1::date
        WHERE book_id = $2 AND ${leafNoPredicate(3)}
        RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
       [today, bookId, leafNorm],
@@ -104,8 +104,19 @@ export async function POST(request) {
       return jsonError(`No consumption row for leaf ${leafNorm}.`, 404);
     }
 
+    const remaining = await query(
+      `SELECT 1 FROM consumption WHERE book_id = $1 AND accounted = false LIMIT 1`,
+      [bookId],
+    );
+    if (remaining.rows.length === 0) {
+      await query(`UPDATE book SET book_status = 'completed' WHERE id = $1`, [bookId]);
+    }
+
     return Response.json(out);
   } catch (err) {
+    const human = humanizePgError(err);
+    if (human) return jsonError(human.message, human.status);
+
     const code = pgCode(err);
     console.error("POST /api/consumption/account", err);
     if (code === "23514") return jsonError("Invalid accounted_date (check constraint)", 400);

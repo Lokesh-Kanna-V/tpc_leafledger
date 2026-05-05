@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { asInt, jsonError, pgCode } from "@/lib/http";
+import { asInt, humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -44,6 +44,9 @@ export async function PUT(request, { params }) {
     if (!office) return jsonError("Office not found", 404);
     return Response.json(office);
   } catch (err) {
+    const human = humanizePgError(err);
+    if (human) return jsonError(human.message, human.status);
+
     if (pgCode(err) === "23505") return jsonError("Office name already exists", 409);
     return jsonError("Failed to update office", 500);
   }

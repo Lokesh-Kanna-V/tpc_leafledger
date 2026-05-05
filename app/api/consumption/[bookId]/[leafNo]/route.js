@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { jsonError, pgCode } from "@/lib/http";
+import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -82,9 +82,9 @@ export async function PUT(request, { params }) {
     const result = await query(
       `UPDATE consumption
        SET user_id = $1,
-           assigned_date = $2,
+           assigned_date = $2::date,
            accounted = $3,
-           accounted_date = $4
+           accounted_date = $4::date
        WHERE book_id = $5 AND ${leafNoPredicate(6)}
        RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
       [userIdOrNull, assigned_date.trim(), accounted, accountedDateValue, bookId, leafNo],
@@ -93,6 +93,9 @@ export async function PUT(request, { params }) {
     if (!row) return jsonError("Consumption not found", 404);
     return Response.json(row);
   } catch (err) {
+    const human = humanizePgError(err);
+    if (human) return jsonError(human.message, human.status);
+
     const code = pgCode(err);
     if (code === "23503") return jsonError("Invalid user_id", 400);
     if (code === "23514") return jsonError("Invalid accounted/accounted_date", 400);

@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { jsonError, pgCode } from "@/lib/http";
+import { humanizePgError, jsonError } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -57,7 +57,7 @@ export async function POST(request) {
     const result = await query(
       `INSERT INTO consumption
         (book_id, leaf_no, user_id, assigned_date, accounted, accounted_date)
-       VALUES ($1, $2, $3, $4, $5, $6)
+       VALUES ($1, $2, $3, $4::date, $5, $6::date)
        RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
       [
         book_id,
@@ -70,37 +70,10 @@ export async function POST(request) {
     );
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {
-    const code = pgCode(err);
-    const detail =
-      typeof err === "object" && err !== null && "detail" in err
-        ? String(err.detail)
-        : "";
-    const message =
-      err instanceof Error && err.message ? err.message : "Failed to create consumption";
+    const human = humanizePgError(err);
+    if (human) return jsonError(human.message, human.status);
 
-    if (code === "23505") {
-      return jsonError("This leaf already exists for this book.", 409);
-    }
-    if (code === "23503") {
-      return jsonError("Invalid user_id (no matching employee) or book_id", 400);
-    }
-    if (code === "23514") {
-      return jsonError("Invalid accounted/accounted_date (check constraint)", 400);
-    }
-    if (code === "23502") {
-      return jsonError(
-        "consumption.user_id does not allow NULL. Run: ALTER TABLE consumption ALTER COLUMN user_id DROP NOT NULL;",
-        400,
-      );
-    }
-    if (code === "42804" || /type/i.test(message) && /leaf_no|user_id|assigned_date/i.test(message)) {
-      return jsonError(
-        `Database type mismatch: ${message}${detail ? ` — ${detail}` : ""}`,
-        400,
-      );
-    }
-
-    console.error("POST /api/consumption", message, detail || code || err);
-    return jsonError(message, 500);
+    console.error("POST /api/consumption", err);
+    return jsonError("Failed to create consumption", 500);
   }
 }

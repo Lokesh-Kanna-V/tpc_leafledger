@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import {
   Table,
@@ -22,22 +22,31 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const reload = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await getOverdueAlerts()
-      setAlerts(data)
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load alerts")
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      setLoading(true)
+      try {
+        const data = await getOverdueAlerts()
+        if (cancelled) return
+        setAlerts(data)
+        setError(null)
+      } catch (err) {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : "Failed to load alerts")
+      } finally {
+        if (cancelled) return
+        setLoading(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    void reload()
-  }, [reload])
 
   const totalOverdueLeaves = useMemo(
     () => alerts.reduce((sum, a) => sum + (a.payload?.overdueCount ?? 0), 0),

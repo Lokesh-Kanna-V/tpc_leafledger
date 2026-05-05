@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { jsonError, pgCode } from "@/lib/http";
+import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -64,9 +64,9 @@ export async function POST(request) {
     let result = await query(
       `UPDATE consumption
        SET user_id = $1,
-           assigned_date = $2,
+           assigned_date = $2::date,
            accounted = $3,
-           accounted_date = $4
+           accounted_date = $4::date
        WHERE book_id = $5 AND ${leafNoPredicate(6)}
        ${returning}`,
       [
@@ -78,13 +78,23 @@ export async function POST(request) {
         leafNorm,
       ],
     );
-    if (result.rows[0]) return Response.json(result.rows[0]);
+    if (result.rows[0]) {
+      if (userIdOrNull !== null) {
+        await query(
+          `UPDATE book
+           SET initial_assigned_date = $1::date
+           WHERE id = $2 AND initial_assigned_date IS NULL`,
+          [assigned_date.trim(), book_id],
+        );
+      }
+      return Response.json(result.rows[0]);
+    }
 
     try {
       result = await query(
         `INSERT INTO consumption
           (book_id, leaf_no, user_id, assigned_date, accounted, accounted_date)
-         VALUES ($1, $2, $3, $4, $5, $6)
+         VALUES ($1, $2, $3, $4::date, $5, $6::date)
          ${returning}`,
         [
           book_id,
@@ -95,6 +105,14 @@ export async function POST(request) {
           accountedDateValue,
         ],
       );
+      if (userIdOrNull !== null) {
+        await query(
+          `UPDATE book
+           SET initial_assigned_date = $1::date
+           WHERE id = $2 AND initial_assigned_date IS NULL`,
+          [assigned_date.trim(), book_id],
+        );
+      }
       return Response.json(result.rows[0], { status: 201 });
     } catch (err) {
       if (pgCode(err) !== "23505") throw err;
@@ -104,9 +122,9 @@ export async function POST(request) {
       `UPDATE consumption
        SET book_id = $1,
            user_id = $2,
-           assigned_date = $3,
+           assigned_date = $3::date,
            accounted = $4,
-           accounted_date = $5
+           accounted_date = $5::date
        WHERE (${leafNoPredicate(6)}) AND book_id IS NULL
        ${returning}`,
       [
@@ -118,7 +136,17 @@ export async function POST(request) {
         leafNorm,
       ],
     );
-    if (result.rows[0]) return Response.json(result.rows[0]);
+    if (result.rows[0]) {
+      if (userIdOrNull !== null) {
+        await query(
+          `UPDATE book
+           SET initial_assigned_date = $1::date
+           WHERE id = $2 AND initial_assigned_date IS NULL`,
+          [assigned_date.trim(), book_id],
+        );
+      }
+      return Response.json(result.rows[0]);
+    }
 
     const clash = await query(
       `SELECT book_id FROM consumption WHERE ${leafNoPredicate(1)} LIMIT 1`,
@@ -134,10 +162,11 @@ export async function POST(request) {
 
     return jsonError(`Could not upsert leaf ${leafNorm} for book ${book_id}.`, 409);
   } catch (err) {
+    const human = humanizePgError(err);
+    if (human) return jsonError(human.message, human.status);
+
     const code = pgCode(err);
-    if (code === "23503") return jsonError("Invalid user_id or book_id", 400);
-    if (code === "23514") return jsonError("Invalid accounted/accounted_date", 400);
-    console.error("POST /api/consumption/upsert", err);
-    return jsonError(err instanceof Error ? err.message : "Upsert failed", 500);
+    console.error("POST /api/consumption/upsert", code || "", err);
+    return jsonError("Upsert failed", 500);
   }
 }
