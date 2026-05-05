@@ -10,7 +10,10 @@ export type AccountingOverdueAlert = {
   payload: {
     overdueCount: number
     oldestAssignedDate: string
-    daysOverdue: number
+    /** Days passed since the book was assigned (based on `book.initial_assigned_date`). */
+    daysPassed: number
+    /** Distinct employee names currently assigned on unaccounted leaves. */
+    assignedTo: string[]
   }
   book: null | {
     id: number

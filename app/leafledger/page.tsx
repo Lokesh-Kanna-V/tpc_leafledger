@@ -20,7 +20,7 @@ import { getBooks } from "@/lib/api/books"
 import { getConsumptions } from "@/lib/api/consumption"
 import { getEmployees } from "@/lib/api/employees"
 import { getOffices } from "@/lib/api/offices"
-import { getOverdueAlerts } from "@/lib/api/alerts"
+import { getOverdueAlerts, type AccountingOverdueAlert } from "@/lib/api/alerts"
 import type { Book } from "@/lib/api/books"
 import type { Consumption } from "@/lib/api/consumption"
 import type { Employee } from "@/lib/api/employees"
@@ -126,6 +126,7 @@ export default function Home() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [offices, setOffices] = useState<Office[]>([])
   const [alertCount, setAlertCount] = useState<number>(0)
+  const [alerts, setAlerts] = useState<AccountingOverdueAlert[]>([])
   const [dataLoading, setDataLoading] = useState(true)
   const [dataError, setDataError] = useState<string | null>(null)
 
@@ -144,8 +145,10 @@ export default function Home() {
       setOffices(o)
       try {
         const alerts = await getOverdueAlerts()
+        setAlerts(alerts)
         setAlertCount(alerts.length)
       } catch {
+        setAlerts([])
         setAlertCount(0)
       }
       setDataError(null)
@@ -182,10 +185,10 @@ export default function Home() {
   )
 
   return (
-    <main className="flex h-screen bg-neutral-100">
+    <main className="flex h-svh bg-neutral-100">
       <aside
         className={cn(
-          "flex h-screen flex-col border-r border-border bg-gray-100 transition-all duration-200 ease-in-out",
+          "flex h-svh flex-col border-r border-border bg-gray-100 transition-all duration-200 ease-in-out",
           collapsed ? "w-14" : "w-60"
         )}
       >
@@ -253,64 +256,74 @@ export default function Home() {
           </button>
         </div>
       </aside>
-      <div className="mt-3 mr-3 flex-1 rounded-lg border border-gray-200 bg-neutral-50 p-4 shadow-lg">
-        {dataError ? (
-          <p className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {dataError}
-          </p>
-        ) : null}
-        {active === "Dashboard" ? (
-          dataLoading ? (
-            <p className="text-sm text-muted-foreground">Loading dashboard…</p>
-          ) : (
-            <Dashboard books={bookRows} />
-          )
-        ) : active === "Book Manager" ? (
-          <>
-            <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
-              <BookOpenIcon />
-              <h1 className="text-xl font-bold">BOOK MANAGER</h1>
-            </div>
-            {dataLoading ? (
-              <p className="mt-6 text-sm text-muted-foreground">
-                Loading books…
+      <div className="flex min-w-0 flex-1 flex-col p-3">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-200 bg-neutral-50 shadow-lg">
+          <div className="h-full overflow-auto p-4">
+            {dataError ? (
+              <p className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {dataError}
               </p>
-            ) : (
-              <BookManager
-                books={bookRows}
-                apiBooks={apiBooks}
-                employees={employees}
-                offices={offices}
-                consumptions={consumptions}
-                onReload={reloadData}
-              />
-            )}
-          </>
-        ) : active === "Employees" ? (
-          <>
-            <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
-              <Users2Icon />
-              <h1 className="text-xl font-bold">EMPLOYEES</h1>
-            </div>
-            {dataLoading ? (
-              <p className="mt-6 text-sm text-muted-foreground">
-                Loading employees…
-              </p>
-            ) : (
-              <Employees employees={employees} onReload={reloadData} />
-            )}
-          </>
-        ) : active === "Alerts" ? (
-          <>
-            <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
-              <BellIcon />
-              <h1 className="text-xl font-bold">ALERTS</h1>
-            </div>
-            <div className="mt-6">
-              <Alerts />
-            </div>
-          </>
-        ) : null}
+            ) : null}
+            {active === "Dashboard" ? (
+              dataLoading ? (
+                <p className="text-sm text-muted-foreground">
+                  Loading dashboard…
+                </p>
+              ) : (
+                <Dashboard
+                  books={bookRows}
+                  alerts={alerts}
+                  onOpenAlerts={() => setActive("Alerts")}
+                />
+              )
+            ) : active === "Book Manager" ? (
+              <>
+                <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+                  <BookOpenIcon />
+                  <h1 className="text-xl font-bold">BOOK MANAGER</h1>
+                </div>
+                {dataLoading ? (
+                  <p className="mt-6 text-sm text-muted-foreground">
+                    Loading books…
+                  </p>
+                ) : (
+                  <BookManager
+                    books={bookRows}
+                    apiBooks={apiBooks}
+                    employees={employees}
+                    offices={offices}
+                    consumptions={consumptions}
+                    onReload={reloadData}
+                  />
+                )}
+              </>
+            ) : active === "Employees" ? (
+              <>
+                <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+                  <Users2Icon />
+                  <h1 className="text-xl font-bold">EMPLOYEES</h1>
+                </div>
+                {dataLoading ? (
+                  <p className="mt-6 text-sm text-muted-foreground">
+                    Loading employees…
+                  </p>
+                ) : (
+                  <Employees employees={employees} onReload={reloadData} />
+                )}
+              </>
+            ) : active === "Alerts" ? (
+              <>
+                <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+                  <BellIcon />
+                  <h1 className="text-xl font-bold">ALERTS</h1>
+                </div>
+                <div className="mt-6">
+                  <Alerts />
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
       </div>
     </main>
   )

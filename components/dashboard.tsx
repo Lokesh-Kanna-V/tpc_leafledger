@@ -7,11 +7,11 @@ import {
   BookXIcon,
   LayoutDashboardIcon,
   UserRoundCheckIcon,
-  UserRoundXIcon,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import type { BookRow } from "@/lib/books"
+import type { AccountingOverdueAlert } from "@/lib/api/alerts"
 import {
   Card,
   CardContent,
@@ -39,41 +39,58 @@ function isBookAccounted(b: BookRow) {
   return accountedBookLeaves >= totalBookLeaves
 }
 
-export default function Dashboard({ books }: { books: BookRow[] }) {
+export default function Dashboard({
+  books,
+  alerts,
+  onOpenAlerts,
+}: {
+  books: BookRow[]
+  alerts: AccountingOverdueAlert[]
+  onOpenAlerts: () => void
+}) {
   const dashboard = useMemo(() => {
+    const currentBooks = books.filter((b) => b.bookStatus === "current")
+    const storeBooks = books.filter((b) => b.bookStatus === "store")
+
     const total = books.length
 
-    const totalLeaves = books.reduce(
+    // Accounting metrics should only consider CURRENT books.
+    const totalCurrentLeaves = currentBooks.reduce(
       (sum, b) => sum + (b.leafTo - b.leafFrom + 1),
       0
     )
-    const accountedLeaves = books.reduce((sum, b) => {
+    const accountedCurrentLeaves = currentBooks.reduce((sum, b) => {
       const accountedThrough = b.accountedThrough ?? b.leafFrom - 1
       if (accountedThrough < b.leafFrom) return sum
       const capped = Math.min(accountedThrough, b.leafTo)
       return sum + (capped - b.leafFrom + 1)
     }, 0)
-    const unaccountedLeaves = Math.max(0, totalLeaves - accountedLeaves)
+    const unaccountedCurrentLeaves = Math.max(
+      0,
+      totalCurrentLeaves - accountedCurrentLeaves
+    )
 
-    const accountedPct = totalLeaves
-      ? Math.round((accountedLeaves / totalLeaves) * 100)
+    const accountedPct = totalCurrentLeaves
+      ? Math.round((accountedCurrentLeaves / totalCurrentLeaves) * 100)
       : 0
 
     const accountedBooks = books.filter(isBookAccounted).length
     const unaccountedBooks = total - accountedBooks
 
-    const assigned = books.filter(
-      (b) => (b.assignedTo ?? "").trim().length > 0
-    ).length
-    const unassigned = total - assigned
-    const assignedPct = total ? Math.round((assigned / total) * 100) : 0
+    const currentBookCount = currentBooks.length
 
-    const avgLeaves = total ? Math.round((totalLeaves / total) * 10) / 10 : 0
+    const avgLeaves = total
+      ? Math.round(
+          (totalCurrentLeaves / Math.max(1, currentBooks.length)) * 10
+        ) / 10
+      : 0
+
+    const storedBookLeaves = storeBooks.reduce(
+      (sum, b) => sum + (b.leafTo - b.leafFrom + 1),
+      0
+    )
 
     const needsAccounting = books.filter((b) => !isBookAccounted(b)).slice(0, 5)
-    const needsAssignment = books
-      .filter((b) => !(b.assignedTo ?? "").trim())
-      .slice(0, 5)
 
     const byAssignee = Object.entries(
       books.reduce<
@@ -95,18 +112,18 @@ export default function Dashboard({ books }: { books: BookRow[] }) {
 
     return {
       total,
-      totalLeaves,
+      totalLeaves: totalCurrentLeaves,
       avgLeaves,
-      accountedLeaves,
-      unaccountedLeaves,
+      accountedLeaves: accountedCurrentLeaves,
+      unaccountedLeaves: unaccountedCurrentLeaves,
       accountedPct,
       accountedBooks,
       unaccountedBooks,
-      assigned,
-      unassigned,
-      assignedPct,
+      currentBookCount,
+      currentBookLeaves: totalCurrentLeaves,
+      storedBooks: storeBooks.length,
+      storedBookLeaves,
       needsAccounting,
-      needsAssignment,
       byAssignee,
       recent,
     }
@@ -141,25 +158,32 @@ export default function Dashboard({ books }: { books: BookRow[] }) {
         <Card size="sm">
           <CardHeader className="border-b">
             <CardTitle className="flex items-center justify-between">
+              Current
+              <UserRoundCheckIcon className="h-4 w-4 text-muted-foreground" />
+            </CardTitle>
+            <CardDescription>Books currently in use</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold tabular-nums">
+              {dashboard.currentBookCount}
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground tabular-nums">
+              {dashboard.currentBookLeaves} leaves in current
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card size="sm">
+          <CardHeader className="border-b">
+            <CardTitle className="flex items-center justify-between">
               Accounted
               <BookCheckIcon className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
             <CardDescription>Leaves accounted</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-semibold tabular-nums">
-                {dashboard.accountedLeaves}
-              </div>
-              <div className="text-sm text-muted-foreground tabular-nums">
-                {dashboard.accountedPct}%
-              </div>
-            </div>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full border bg-muted/40">
-              <div
-                className="h-full rounded-full bg-emerald-500"
-                style={{ width: `${dashboard.accountedPct}%` }}
-              />
+            <div className="text-3xl font-semibold tabular-nums">
+              {dashboard.accountedLeaves}
             </div>
             <div className="mt-1 text-sm text-muted-foreground tabular-nums">
               {dashboard.unaccountedLeaves} leaves pending
@@ -170,44 +194,17 @@ export default function Dashboard({ books }: { books: BookRow[] }) {
         <Card size="sm">
           <CardHeader className="border-b">
             <CardTitle className="flex items-center justify-between">
-              Unaccounted
+              Stored
               <BookXIcon className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
-            <CardDescription>Leaves that still need accounting</CardDescription>
+            <CardDescription>Books currently in store</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold tabular-nums">
-              {dashboard.unaccountedLeaves}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card size="sm">
-          <CardHeader className="border-b">
-            <CardTitle className="flex items-center justify-between">
-              Assigned
-              <UserRoundCheckIcon className="h-4 w-4 text-muted-foreground" />
-            </CardTitle>
-            <CardDescription>Books with an assignee</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-semibold tabular-nums">
-                {dashboard.assigned}
-              </div>
-              <div className="text-sm text-muted-foreground tabular-nums">
-                {dashboard.assignedPct}%
-              </div>
-            </div>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full border bg-muted/40">
-              <div
-                className="h-full rounded-full bg-blue-500"
-                style={{ width: `${dashboard.assignedPct}%` }}
-              />
+              {dashboard.storedBooks}
             </div>
             <div className="mt-1 text-sm text-muted-foreground tabular-nums">
-              {dashboard.unassigned} unassigned{" "}
-              <UserRoundXIcon className="inline h-3.5 w-3.5" />
+              {dashboard.storedBookLeaves} leaves in store
             </div>
           </CardContent>
         </Card>
@@ -265,6 +262,61 @@ export default function Dashboard({ books }: { books: BookRow[] }) {
 
         <Card size="sm">
           <CardHeader className="border-b">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <CardTitle>Needs attention</CardTitle>
+                <CardDescription>From Alerts</CardDescription>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenAlerts}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                View all
+              </button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <div className="rounded-lg border bg-muted/30 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <div className="font-medium">Overdue accounting</div>
+                <div className="text-sm font-semibold tabular-nums">
+                  {alerts.length}
+                </div>
+              </div>
+              <Separator className="my-2" />
+              <div className="flex flex-col gap-1.5 text-sm">
+                {alerts.length ? (
+                  alerts.slice(0, 5).map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={onOpenAlerts}
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1 text-left hover:bg-muted"
+                      title="Open Alerts"
+                    >
+                      <div className="font-medium">
+                        Book {a.book?.book_number ?? `#${a.book_id ?? "—"}`}
+                      </div>
+                      <div className="text-muted-foreground tabular-nums">
+                        {a.payload?.daysPassed ?? "—"}d
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-muted-foreground">
+                    No alerts right now.
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+        <Card size="sm">
+          <CardHeader className="border-b">
             <CardTitle>Next actions</CardTitle>
             <CardDescription>What you can do right now</CardDescription>
           </CardHeader>
@@ -287,43 +339,6 @@ export default function Dashboard({ books }: { books: BookRow[] }) {
                 <div className="text-muted-foreground">
                   Account leaves to auto-complete books.
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-        <Card size="sm">
-          <CardHeader className="border-b">
-            <CardTitle>Needs attention</CardTitle>
-            <CardDescription>Quick triage list</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="rounded-lg border bg-muted/30 px-3 py-2">
-              <div className="flex items-center justify-between">
-                <div className="font-medium">Unaccounted</div>
-                <div className="text-sm font-semibold tabular-nums">
-                  {dashboard.unaccountedLeaves}
-                </div>
-              </div>
-              <Separator className="my-2" />
-              <div className="flex flex-col gap-1.5 text-sm">
-                {dashboard.needsAccounting.length ? (
-                  dashboard.needsAccounting.map((b) => (
-                    <div
-                      key={b.id}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="font-medium">{b.bookNo}</div>
-                      <div className="text-muted-foreground tabular-nums">
-                        {b.leafFrom}–{b.leafTo}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-muted-foreground">Nothing pending.</div>
-                )}
               </div>
             </div>
           </CardContent>

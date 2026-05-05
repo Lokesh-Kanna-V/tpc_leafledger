@@ -85,9 +85,10 @@ export default function Alerts() {
           <TableRow>
             <TableHead>Office</TableHead>
             <TableHead>Book</TableHead>
+            <TableHead>Assigned to</TableHead>
             <TableHead>Overdue leaves</TableHead>
             <TableHead>Oldest assigned</TableHead>
-            <TableHead>Days overdue</TableHead>
+            <TableHead>Days passed</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -95,13 +96,16 @@ export default function Alerts() {
             <TableRow key={a.id}>
               <TableCell>{a.book?.office?.name ?? "—"}</TableCell>
               <TableCell>{a.book?.book_number ?? `#${a.book_id ?? "—"}`}</TableCell>
+              <TableCell>
+                {a.payload?.assignedTo?.length ? a.payload.assignedTo.join(", ") : "—"}
+              </TableCell>
               <TableCell>{a.payload?.overdueCount ?? "—"}</TableCell>
               <TableCell>
                 {a.payload?.oldestAssignedDate
                   ? formatDate(a.payload.oldestAssignedDate)
                   : "—"}
               </TableCell>
-              <TableCell>{a.payload?.daysOverdue ?? "—"}</TableCell>
+              <TableCell>{a.payload?.daysPassed ?? "—"}</TableCell>
             </TableRow>
           ))}
         </TableBody>

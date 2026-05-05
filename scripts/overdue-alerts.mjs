@@ -14,31 +14,52 @@ export async function runOverdueAccountingAlerts() {
   const threshold = new Date(today)
   threshold.setDate(threshold.getDate() - OVERDUE_DAYS)
 
-  const groups = await prisma.consumption.groupBy({
-    by: ["book_id"],
+  // Overdue is based on when the book was first assigned (book.initial_assigned_date),
+  // not per-leaf assignment timestamps.
+  const books = await prisma.book.findMany({
     where: {
-      accounted: false,
-      assigned_date: { lte: threshold },
-      book_id: { not: null },
+      book_status: "current",
+      initial_assigned_date: { not: null, lte: threshold },
+      consumptions: { some: { accounted: false } },
     },
-    _count: { _all: true },
-    _min: { assigned_date: true },
+    select: {
+      id: true,
+      initial_assigned_date: true,
+      consumptions: {
+        where: { accounted: false, user_id: { not: null } },
+        select: { employee: { select: { name: true } } },
+      },
+      _count: {
+        select: {
+          consumptions: { where: { accounted: false } },
+        },
+      },
+    },
   })
 
   const overdueByBook = new Map()
-  for (const g of groups) {
-    if (typeof g.book_id !== "number") continue
-    const oldest = g._min.assigned_date
+  for (const b of books) {
+    const oldest = b.initial_assigned_date
     if (!oldest) continue
-    const daysOverdue = Math.max(
+
+    const daysPassed = Math.max(
       0,
-      Math.floor((today.getTime() - oldest.getTime()) / (24 * 60 * 60 * 1000)) -
-        OVERDUE_DAYS,
+      Math.floor((today.getTime() - oldest.getTime()) / (24 * 60 * 60 * 1000)),
     )
-    overdueByBook.set(g.book_id, {
-      overdueCount: g._count._all,
+
+    const assignedTo = [
+      ...new Set(
+        (b.consumptions ?? [])
+          .map((c) => c.employee?.name)
+          .filter((x) => typeof x === "string" && x.trim()),
+      ),
+    ].sort((a, b) => a.localeCompare(b))
+
+    overdueByBook.set(b.id, {
+      overdueCount: b._count.consumptions,
       oldestAssignedDate: isoDateOnly(oldest),
-      daysOverdue,
+      daysPassed,
+      assignedTo,
     })
   }
 

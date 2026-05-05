@@ -35,20 +35,5 @@ services:
       db:
         condition: service_healthy
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: leafledger-app
-    restart: unless-stopped
-    command: ["node", "scripts/overdue-worker.mjs"]
-    environment:
-      NODE_ENV: production
-      TZ: Asia/Kolkata
-      DATABASE_URL: postgresql://leafledger:leafledger@db:5432/leafledger
-    depends_on:
-      db:
-        condition: service_healthy
-
 volumes:
   postgres_data:
