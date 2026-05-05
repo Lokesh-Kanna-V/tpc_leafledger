@@ -115,6 +115,7 @@ function NavItemRow({
 export default function Home() {
   const [collapsed, setCollapsed] = useState(false)
   const [active, setActive] = useState("Dashboard")
+  const [logoutBusy, setLogoutBusy] = useState(false)
 
   const [apiBooks, setApiBooks] = useState<Book[]>([])
   const [consumptions, setConsumptions] = useState<Consumption[]>([])
@@ -150,6 +151,19 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch loads books/employees/etc.
     void reloadData()
   }, [reloadData])
+
+  async function handleLogout() {
+    setLogoutBusy(true)
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      })
+      window.location.href = "/"
+    } finally {
+      setLogoutBusy(false)
+    }
+  }
 
   const bookRows = useMemo(
     () => rowsFromDatabase(apiBooks, consumptions, employees, offices),
@@ -200,29 +214,32 @@ export default function Home() {
 
         {/* Footer */}
         <div className="border-t border-border px-2 py-2">
-          <div
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            disabled={logoutBusy}
             className={cn(
-              "flex cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2 py-2 transition-colors hover:bg-muted",
-              collapsed && "justify-center"
+              "flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50",
+              collapsed && "justify-center",
             )}
           >
             <div className="flex h-7 w-7 min-w-7 items-center justify-center rounded-full bg-green-100 text-xs font-medium text-green-700">
-              LK
+              LL
             </div>
             {!collapsed && (
               <div className="flex-1 overflow-hidden">
                 <p className="truncate text-sm font-medium text-foreground">
-                  Lokesh
+                  Signed in
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  lokesh@company.com
+                  {logoutBusy ? "Signing out…" : "Administrator"}
                 </p>
               </div>
             )}
             {!collapsed && (
               <LogOut className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
-          </div>
+          </button>
         </div>
       </aside>
       <div className="mt-3 mr-3 flex-1 rounded-lg border border-gray-200 bg-neutral-50 p-4 shadow-lg">

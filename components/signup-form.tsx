@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -24,37 +23,50 @@ import { PasswordInput } from "@/components/password-input"
 import { ApiError, parseResponse } from "@/lib/api/request"
 import { cn } from "@/lib/utils"
 
-type LoginSuccess = {
+type SignupSuccess = {
   ok: true
   employee: { id: number; name: string; role: string }
 }
 
-export function LoginForm({
+export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const router = useRouter()
   const [name, setName] = useState("")
+  const [role, setRole] = useState("")
   const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setSuccess(null)
+
+    if (password !== confirm) {
+      setError("Passwords do not match.")
+      return
+    }
+
     setPending(true)
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          role: role.trim(),
           password,
         }),
       })
-      await parseResponse<LoginSuccess>(response)
-      router.push("/leafledger")
-      router.refresh()
+      const data = await parseResponse<SignupSuccess>(response)
+      setSuccess(
+        `Account created for ${data.employee.name}. You can sign in if your role is admin.`,
+      )
+      setPassword("")
+      setConfirm("")
     } catch (err) {
       const message =
         err instanceof ApiError
@@ -72,10 +84,10 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle>Login to your account</CardTitle>
+          <CardTitle>Create an employee account</CardTitle>
           <CardDescription>
-            Sign in with your employee name and password. Only accounts with the
-            admin role can access the app after login.
+            Creates an employee row with a hashed password in the database. Only
+            the admin role can sign in to the app after signup.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -86,13 +98,18 @@ export function LoginForm({
                   {error}
                 </FieldDescription>
               ) : null}
+              {success ? (
+                <FieldDescription className="text-green-700 dark:text-green-400">
+                  {success}
+                </FieldDescription>
+              ) : null}
               <Field>
-                <FieldLabel htmlFor="login-name">Name</FieldLabel>
+                <FieldLabel htmlFor="signup-name">Name</FieldLabel>
                 <Input
-                  id="login-name"
+                  id="signup-name"
                   type="text"
-                  autoComplete="username"
-                  placeholder="Your name as in Leaf Ledger"
+                  autoComplete="name"
+                  placeholder="Full name"
                   value={name}
                   onChange={(ev) => setName(ev.target.value)}
                   required
@@ -100,10 +117,23 @@ export function LoginForm({
                 />
               </Field>
               <Field>
-                <FieldLabel htmlFor="login-password">Password</FieldLabel>
+                <FieldLabel htmlFor="signup-role">Role</FieldLabel>
+                <Input
+                  id="signup-role"
+                  type="text"
+                  autoComplete="organization-title"
+                  placeholder="e.g. admin, operator"
+                  value={role}
+                  onChange={(ev) => setRole(ev.target.value)}
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="signup-password">Password</FieldLabel>
                 <PasswordInput
-                  id="login-password"
-                  autoComplete="current-password"
+                  id="signup-password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(ev) => setPassword(ev.target.value)}
                   required
@@ -111,8 +141,19 @@ export function LoginForm({
                 />
               </Field>
               <Field>
+                <FieldLabel htmlFor="signup-confirm">Confirm password</FieldLabel>
+                <PasswordInput
+                  id="signup-confirm"
+                  autoComplete="new-password"
+                  value={confirm}
+                  onChange={(ev) => setConfirm(ev.target.value)}
+                  required
+                  disabled={pending}
+                />
+              </Field>
+              <Field>
                 <Button type="submit" disabled={pending}>
-                  {pending ? "Signing in…" : "Login"}
+                  {pending ? "Creating account…" : "Sign up"}
                 </Button>
               </Field>
             </FieldGroup>
@@ -120,9 +161,12 @@ export function LoginForm({
         </CardContent>
         <CardFooter className="flex flex-col gap-2 border-t pt-6">
           <p className="text-center text-sm text-muted-foreground">
-            Need an account?{" "}
-            <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">
-              Sign up
+            Already registered?{" "}
+            <Link
+              href="/"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Back to login
             </Link>
           </p>
         </CardFooter>
