@@ -1,3 +1,4 @@
+import { refreshBookCompletionStatus } from "@/lib/book-completion";
 import { query } from "@/lib/db";
 import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
@@ -104,15 +105,7 @@ export async function POST(request) {
       return jsonError(`No consumption row for leaf ${leafNorm}.`, 404);
     }
 
-    const remaining = await query(
-      `SELECT 1 FROM consumption WHERE book_id = $1 AND accounted = false LIMIT 1`,
-      [bookId],
-    );
-    if (remaining.rows.length === 0) {
-      await query(`UPDATE book SET book_status = 'completed'::"BookStatus" WHERE id = $1`, [
-        bookId,
-      ]);
-    }
+    await refreshBookCompletionStatus(bookId);
 
     return Response.json(out);
   } catch (err) {

@@ -63,22 +63,26 @@ export default function Dashboard({
       0
     )
 
-    // Accounting metrics should only consider CURRENT books.
     const totalCurrentLeaves = currentBooks.reduce(
       (sum, b) => sum + (b.leafTo - b.leafFrom + 1),
       0
     )
+
+    const accountedLeavesAll = books.reduce(
+      (sum, b) => sum + b.accountedLeafCount,
+      0
+    )
+    const unaccountedLeavesAll = Math.max(
+      0,
+      totalLeavesAllBooks - accountedLeavesAll
+    )
+
     const accountedCurrentLeaves = currentBooks.reduce((sum, b) => {
       const accountedThrough = b.accountedThrough ?? b.leafFrom - 1
       if (accountedThrough < b.leafFrom) return sum
       const capped = Math.min(accountedThrough, b.leafTo)
       return sum + (capped - b.leafFrom + 1)
     }, 0)
-    const unaccountedCurrentLeaves = Math.max(
-      0,
-      totalCurrentLeaves - accountedCurrentLeaves
-    )
-
     const accountedPct = totalCurrentLeaves
       ? Math.round((accountedCurrentLeaves / totalCurrentLeaves) * 100)
       : 0
@@ -121,8 +125,8 @@ export default function Dashboard({
       total,
       totalLeaves: totalLeavesAllBooks,
       avgLeaves: avgLeavesPerBook,
-      accountedLeaves: accountedCurrentLeaves,
-      unaccountedLeaves: unaccountedCurrentLeaves,
+      accountedLeaves: accountedLeavesAll,
+      unaccountedLeaves: unaccountedLeavesAll,
       accountedPct,
       accountedBooks,
       unaccountedBooks,

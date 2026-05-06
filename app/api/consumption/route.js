@@ -1,3 +1,4 @@
+import { refreshBookCompletionStatus } from "@/lib/book-completion";
 import { query } from "@/lib/db";
 import { humanizePgError, jsonError } from "@/lib/http";
 
@@ -77,6 +78,7 @@ export async function POST(request) {
         [assigned_date.trim(), book_id],
       );
     }
+    await refreshBookCompletionStatus(book_id);
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {
     const human = humanizePgError(err);

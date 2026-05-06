@@ -16,6 +16,8 @@ export type BookRow = {
   assignedTo?: string
   /** Derived: inclusive leaf index for contiguous accounted prefix from leafFrom. */
   accountedThrough: number
+  /** Leaves in [leafFrom, leafTo] with a consumption row marked accounted. */
+  accountedLeafCount: number
 }
 
 export type OfficeLite = { id: number; name: string }
@@ -96,8 +98,10 @@ export function rowsFromDatabase(
     const assignedTo = names.length > 0 ? names.join(", ") : undefined
 
     let accountedThrough = displayLeafFrom - 1
+    let accountedLeafCount = 0
     for (let L = displayLeafFrom; L <= displayLeafTo; L++) {
       const row = leavesInBook.find((c) => parseLeafNo(c.leaf_no) === L)
+      if (row?.accounted) accountedLeafCount++
       if (!row || !row.accounted) break
       accountedThrough = L
     }
@@ -113,6 +117,7 @@ export function rowsFromDatabase(
       bookStatus: b.book_status,
       assignedTo,
       accountedThrough,
+      accountedLeafCount,
     }
   })
 }

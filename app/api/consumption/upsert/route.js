@@ -1,3 +1,4 @@
+import { refreshBookCompletionStatus } from "@/lib/book-completion";
 import { query } from "@/lib/db";
 import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
@@ -92,6 +93,7 @@ export async function POST(request) {
       if (userIdOrNull !== null) {
         await markBookCurrentOnAssignment(book_id, assigned_date.trim());
       }
+      await refreshBookCompletionStatus(book_id);
       return Response.json(result.rows[0]);
     }
 
@@ -113,6 +115,7 @@ export async function POST(request) {
       if (userIdOrNull !== null) {
         await markBookCurrentOnAssignment(book_id, assigned_date.trim());
       }
+      await refreshBookCompletionStatus(book_id);
       return Response.json(result.rows[0], { status: 201 });
     } catch (err) {
       if (pgCode(err) !== "23505") throw err;
@@ -140,6 +143,7 @@ export async function POST(request) {
       if (userIdOrNull !== null) {
         await markBookCurrentOnAssignment(book_id, assigned_date.trim());
       }
+      await refreshBookCompletionStatus(book_id);
       return Response.json(result.rows[0]);
     }
 
