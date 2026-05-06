@@ -116,6 +116,7 @@ export default function BookManager({
   const [assignNewBook, setAssignNewBook] = useState(false)
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
   const [accountLeafNo, setAccountLeafNo] = useState("")
+  const accountLeafInputRef = useRef<HTMLInputElement | null>(null)
 
   const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -1231,6 +1232,7 @@ export default function BookManager({
                           onChange={(e) => setAccountLeafNo(e.target.value)}
                           aria-invalid={!!accountErrors.leafNo}
                           autoComplete="off"
+                          ref={accountLeafInputRef}
                         />
                         <FieldDescription>
                           Book is inferred from the loaded consumption row for
@@ -1278,6 +1280,9 @@ export default function BookManager({
                           if (!ok) return
                           resetAccountForm()
                           setAccountDialogOpen(true)
+                          requestAnimationFrame(() => {
+                            accountLeafInputRef.current?.focus()
+                          })
                         }}
                       >
                         Account another
