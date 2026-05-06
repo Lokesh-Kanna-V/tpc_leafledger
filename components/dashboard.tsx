@@ -49,10 +49,19 @@ export default function Dashboard({
   onOpenAlerts: () => void
 }) {
   const dashboard = useMemo(() => {
-    const currentBooks = books.filter((b) => b.bookStatus === "current")
-    const storeBooks = books.filter((b) => b.bookStatus === "store")
+    const currentBooks = books.filter(
+      (b) => String(b.bookStatus ?? "").toLowerCase() === "current"
+    )
+    const storeBooks = books.filter(
+      (b) => String(b.bookStatus ?? "").toLowerCase() === "store"
+    )
 
     const total = books.length
+
+    const totalLeavesAllBooks = books.reduce(
+      (sum, b) => sum + (b.leafTo - b.leafFrom + 1),
+      0
+    )
 
     // Accounting metrics should only consider CURRENT books.
     const totalCurrentLeaves = currentBooks.reduce(
@@ -79,10 +88,8 @@ export default function Dashboard({
 
     const currentBookCount = currentBooks.length
 
-    const avgLeaves = total
-      ? Math.round(
-          (totalCurrentLeaves / Math.max(1, currentBooks.length)) * 10
-        ) / 10
+    const avgLeavesPerBook = total
+      ? Math.round((totalLeavesAllBooks / total) * 10) / 10
       : 0
 
     const storedBookLeaves = storeBooks.reduce(
@@ -112,8 +119,8 @@ export default function Dashboard({
 
     return {
       total,
-      totalLeaves: totalCurrentLeaves,
-      avgLeaves,
+      totalLeaves: totalLeavesAllBooks,
+      avgLeaves: avgLeavesPerBook,
       accountedLeaves: accountedCurrentLeaves,
       unaccountedLeaves: unaccountedCurrentLeaves,
       accountedPct,

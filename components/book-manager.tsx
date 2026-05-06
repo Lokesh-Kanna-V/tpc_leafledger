@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   Table,
   TableBody,
@@ -101,6 +101,7 @@ export default function BookManager({
   onReload,
 }: BookManagerProps) {
   const [dialogOpen, setDialogOpen] = useState(false)
+  const keepAddDialogOpenRef = useRef(false)
   const [bookNo, setBookNo] = useState("")
   const [leafFrom, setLeafFrom] = useState("")
   const [leafTo, setLeafTo] = useState("")
@@ -525,6 +526,13 @@ export default function BookManager({
     setOfficeId("")
   }
 
+  function resetFormKeepOffice() {
+    setBookNo("")
+    setLeafFrom("")
+    setLeafTo("")
+    setAssignedTo("")
+  }
+
   async function addBook(): Promise<boolean> {
     if (!canAdd) return false
 
@@ -702,6 +710,11 @@ export default function BookManager({
               <Dialog
                 open={dialogOpen}
                 onOpenChange={(open) => {
+                  if (!open && keepAddDialogOpenRef.current) {
+                    keepAddDialogOpenRef.current = false
+                    setDialogOpen(true)
+                    return
+                  }
                   setDialogOpen(open)
                   if (open) setAddActionError(null)
                 }}
@@ -898,10 +911,15 @@ export default function BookManager({
                         type="button"
                         variant="secondary"
                         disabled={!canAdd || busy}
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+
+                          keepAddDialogOpenRef.current = true
                           const ok = await addBook()
+                          keepAddDialogOpenRef.current = false
                           if (!ok) return
-                          resetForm()
+                          resetFormKeepOffice()
                         }}
                       >
                         Add more

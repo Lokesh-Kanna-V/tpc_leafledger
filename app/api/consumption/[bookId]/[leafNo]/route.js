@@ -91,6 +91,15 @@ export async function PUT(request, { params }) {
     );
     const row = result.rows[0];
     if (!row) return jsonError("Consumption not found", 404);
+    if (userIdOrNull !== null) {
+      await query(
+        `UPDATE book
+         SET book_status = 'current'::"BookStatus",
+             initial_assigned_date = COALESCE(initial_assigned_date, $1::date)
+         WHERE id = $2`,
+        [assigned_date.trim(), bookId],
+      );
+    }
     return Response.json(row);
   } catch (err) {
     const human = humanizePgError(err);

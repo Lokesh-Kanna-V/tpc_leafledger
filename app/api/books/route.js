@@ -55,7 +55,7 @@ export async function POST(request) {
     const result = await query(
       `INSERT INTO book
         (office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status)
-       VALUES ($1, $2, $3::date, $4, $5, $6)
+       VALUES ($1, $2, $3::date, $4, $5, $6::"BookStatus")
        RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status`,
       [office_id, book_number.trim(), dateValue, leaf_no_from, leaf_no_to, derivedStatus],
     );

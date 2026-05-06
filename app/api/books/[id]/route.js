@@ -69,7 +69,7 @@ export async function PUT(request, { params }) {
            initial_assigned_date = $3::date,
            leaf_no_from = $4,
            leaf_no_to = $5,
-           book_status = $6
+           book_status = $6::"BookStatus"
        WHERE id = $7
        RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status`,
       [

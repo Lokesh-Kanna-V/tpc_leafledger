@@ -68,6 +68,15 @@ export async function POST(request) {
         accountedDateValue,
       ],
     );
+    if (userIdOrNull !== null) {
+      await query(
+        `UPDATE book
+         SET book_status = 'current'::"BookStatus",
+             initial_assigned_date = COALESCE(initial_assigned_date, $1::date)
+         WHERE id = $2`,
+        [assigned_date.trim(), book_id],
+      );
+    }
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {
     const human = humanizePgError(err);

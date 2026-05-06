@@ -21,6 +21,16 @@ function normalizeLeaf(leaf_no) {
   return t;
 }
 
+async function markBookCurrentOnAssignment(bookId, assignedDate) {
+  await query(
+    `UPDATE book
+     SET book_status = 'current'::"BookStatus",
+         initial_assigned_date = COALESCE(initial_assigned_date, $1::date)
+     WHERE id = $2`,
+    [assignedDate, bookId],
+  );
+}
+
 export async function POST(request) {
   let body;
   try {
@@ -80,12 +90,7 @@ export async function POST(request) {
     );
     if (result.rows[0]) {
       if (userIdOrNull !== null) {
-        await query(
-          `UPDATE book
-           SET initial_assigned_date = $1::date
-           WHERE id = $2 AND initial_assigned_date IS NULL`,
-          [assigned_date.trim(), book_id],
-        );
+        await markBookCurrentOnAssignment(book_id, assigned_date.trim());
       }
       return Response.json(result.rows[0]);
     }
@@ -106,12 +111,7 @@ export async function POST(request) {
         ],
       );
       if (userIdOrNull !== null) {
-        await query(
-          `UPDATE book
-           SET initial_assigned_date = $1::date
-           WHERE id = $2 AND initial_assigned_date IS NULL`,
-          [assigned_date.trim(), book_id],
-        );
+        await markBookCurrentOnAssignment(book_id, assigned_date.trim());
       }
       return Response.json(result.rows[0], { status: 201 });
     } catch (err) {
@@ -138,12 +138,7 @@ export async function POST(request) {
     );
     if (result.rows[0]) {
       if (userIdOrNull !== null) {
-        await query(
-          `UPDATE book
-           SET initial_assigned_date = $1::date
-           WHERE id = $2 AND initial_assigned_date IS NULL`,
-          [assigned_date.trim(), book_id],
-        );
+        await markBookCurrentOnAssignment(book_id, assigned_date.trim());
       }
       return Response.json(result.rows[0]);
     }

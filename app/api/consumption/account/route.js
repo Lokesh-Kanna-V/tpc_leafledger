@@ -109,7 +109,9 @@ export async function POST(request) {
       [bookId],
     );
     if (remaining.rows.length === 0) {
-      await query(`UPDATE book SET book_status = 'completed' WHERE id = $1`, [bookId]);
+      await query(`UPDATE book SET book_status = 'completed'::"BookStatus" WHERE id = $1`, [
+        bookId,
+      ]);
     }
 
     return Response.json(out);
