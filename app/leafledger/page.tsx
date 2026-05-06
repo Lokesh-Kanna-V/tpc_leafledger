@@ -286,16 +286,15 @@ export default function Home() {
                   <p className="mt-6 text-sm text-muted-foreground">
                     Loading books…
                   </p>
-                ) : (
-                  <BookManager
-                    books={bookRows}
-                    apiBooks={apiBooks}
-                    employees={employees}
-                    offices={offices}
-                    consumptions={consumptions}
-                    onReload={reloadData}
-                  />
-                )}
+                ) : null}
+                <BookManager
+                  books={bookRows}
+                  apiBooks={apiBooks}
+                  employees={employees}
+                  offices={offices}
+                  consumptions={consumptions}
+                  onReload={reloadData}
+                />
               </>
             ) : active === "Employees" ? (
               <>

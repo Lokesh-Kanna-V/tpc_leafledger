@@ -917,9 +917,12 @@ export default function BookManager({
 
                           keepAddDialogOpenRef.current = true
                           const ok = await addBook()
-                          keepAddDialogOpenRef.current = false
                           if (!ok) return
                           resetFormKeepOffice()
+                          setDialogOpen(true)
+                          setTimeout(() => {
+                            keepAddDialogOpenRef.current = false
+                          }, 0)
                         }}
                       >
                         Add more
