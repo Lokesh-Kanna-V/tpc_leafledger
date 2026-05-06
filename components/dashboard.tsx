@@ -68,21 +68,15 @@ export default function Dashboard({
       0
     )
 
-    const accountedLeavesAll = books.reduce(
+    const accountedCurrentLeaves = currentBooks.reduce(
       (sum, b) => sum + b.accountedLeafCount,
       0
     )
-    const unaccountedLeavesAll = Math.max(
+    const unaccountedCurrentLeaves = Math.max(
       0,
-      totalLeavesAllBooks - accountedLeavesAll
+      totalCurrentLeaves - accountedCurrentLeaves
     )
 
-    const accountedCurrentLeaves = currentBooks.reduce((sum, b) => {
-      const accountedThrough = b.accountedThrough ?? b.leafFrom - 1
-      if (accountedThrough < b.leafFrom) return sum
-      const capped = Math.min(accountedThrough, b.leafTo)
-      return sum + (capped - b.leafFrom + 1)
-    }, 0)
     const accountedPct = totalCurrentLeaves
       ? Math.round((accountedCurrentLeaves / totalCurrentLeaves) * 100)
       : 0
@@ -125,8 +119,8 @@ export default function Dashboard({
       total,
       totalLeaves: totalLeavesAllBooks,
       avgLeaves: avgLeavesPerBook,
-      accountedLeaves: accountedLeavesAll,
-      unaccountedLeaves: unaccountedLeavesAll,
+      accountedLeaves: accountedCurrentLeaves,
+      unaccountedLeaves: unaccountedCurrentLeaves,
       accountedPct,
       accountedBooks,
       unaccountedBooks,
