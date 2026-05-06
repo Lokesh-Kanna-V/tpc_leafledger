@@ -265,11 +265,22 @@ export default function Dashboard({
           </CardContent>
         </Card>
 
-        <Card size="sm">
-          <CardHeader className="border-b">
+        <Card
+          size="sm"
+          className={cn(
+            alerts.length
+              ? "relative overflow-hidden border-red-500 bg-red-50/90 shadow-2xl ring-4 ring-red-300"
+              : undefined
+          )}
+        >
+          <CardHeader
+            className={cn(alerts.length ? "border-red-200" : "border-b")}
+          >
             <div className="flex items-center justify-between gap-2">
               <div>
-                <CardTitle>Needs attention</CardTitle>
+                <CardTitle className={cn(alerts.length ? "text-red-900" : "")}>
+                  Needs attention
+                </CardTitle>
                 <CardDescription>From Alerts</CardDescription>
               </div>
               <button
@@ -280,9 +291,19 @@ export default function Dashboard({
                 View all
               </button>
             </div>
+            {alerts.length ? (
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-red-100/70 via-transparent to-red-100/70 animate-pulse" />
+            ) : null}
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
-            <div className="rounded-lg border bg-muted/30 px-3 py-2">
+            <div
+              className={cn(
+                "rounded-lg border px-3 py-2",
+                alerts.length
+                  ? "border-red-200 bg-white/60 shadow-sm"
+                  : "bg-muted/30"
+              )}
+            >
               <div className="flex items-center justify-between">
                 <div className="font-medium">Overdue accounting</div>
                 <div className="text-sm font-semibold tabular-nums">
