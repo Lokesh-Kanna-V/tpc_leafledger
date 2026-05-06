@@ -764,7 +764,7 @@ export default function BookManager({
                           id="book-no"
                           value={bookNo}
                           onChange={(e) => setBookNo(e.target.value)}
-                          placeholder="e.g. BK-001"
+                          // placeholder="e.g. BK-001"
                           aria-invalid={!!errors.bookNo}
                           autoComplete="off"
                         />
@@ -1067,7 +1067,7 @@ export default function BookManager({
                               onChange={(e) =>
                                 setAssignNewEmployeeRole(e.target.value)
                               }
-                              placeholder="e.g. Clerk"
+                              // placeholder="e.g. Clerk"
                               autoComplete="off"
                               aria-invalid={!!assignErrors.newEmployeeRole}
                             />
@@ -1117,7 +1117,7 @@ export default function BookManager({
                           inputMode="numeric"
                           value={assignLeafFrom}
                           onChange={(e) => setAssignLeafFrom(e.target.value)}
-                          placeholder="e.g. 1"
+                          // placeholder="e.g. 1"
                           aria-invalid={!!assignErrors.leafFrom}
                           disabled={assignNewBook}
                         />
@@ -1229,7 +1229,6 @@ export default function BookManager({
                           inputMode="numeric"
                           value={accountLeafNo}
                           onChange={(e) => setAccountLeafNo(e.target.value)}
-                          placeholder="e.g. 42"
                           aria-invalid={!!accountErrors.leafNo}
                           autoComplete="off"
                         />
@@ -1272,10 +1271,13 @@ export default function BookManager({
                         type="button"
                         variant="secondary"
                         disabled={!canAccount || busy}
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
                           const ok = await accountSingleLeaf()
                           if (!ok) return
                           resetAccountForm()
+                          setAccountDialogOpen(true)
                         }}
                       >
                         Account another
