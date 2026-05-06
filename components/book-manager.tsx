@@ -315,19 +315,12 @@ export default function BookManager({
       }
     }
 
-    const apiBook = apiBooks.find(
-      (b) => b.book_number === assignBookNo.trim()
-    )
+    const apiBook = apiBooks.find((b) => b.book_number === assignBookNo.trim())
     const span = apiBook ? displayLeafSpanForBook(apiBook) : null
     const minLeaf =
       apiBook && span ? minAssignableLeaf(apiBook, consumptions) : null
 
-    if (
-      apiBook &&
-      span &&
-      minLeaf !== null &&
-      minLeaf > span.to
-    ) {
+    if (apiBook && span && minLeaf !== null && minLeaf > span.to) {
       e.assignBlocked =
         "Every leaf in this book is already accounted through the end of the range. Nothing left to assign."
     }
@@ -426,6 +419,12 @@ export default function BookManager({
     setAssignNewBook(false)
   }
 
+  function resetAssignFormKeepEmployee() {
+    setAssignBookNo("")
+    setAssignLeafFrom("")
+    setAssignNewBook(false)
+  }
+
   function resetAccountForm() {
     setAccountLeafNo("")
   }
@@ -482,9 +481,7 @@ export default function BookManager({
 
       const span = displayLeafSpanForBook(apiBook)
       const minLeaf = minAssignableLeaf(apiBook, consumptions)
-      const fromL = assignNewBook
-        ? minLeaf
-        : Math.max(leafFromNum!, minLeaf)
+      const fromL = assignNewBook ? minLeaf : Math.max(leafFromNum!, minLeaf)
       const endL = span.to
 
       if (fromL > endL) {
@@ -1090,12 +1087,9 @@ export default function BookManager({
                       </>
                     ) : null}
 
-                    <Field orientation="horizontal">
-                      <FieldLabel htmlFor="assign-new-book">
-                        New book
-                      </FieldLabel>
+                    <Field className="flex-row items-center">
                       <FieldContent>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 rounded-sm border-1 border-gray-500">
                           <Checkbox
                             id="assign-new-book"
                             checked={assignNewBook}
@@ -1103,13 +1097,11 @@ export default function BookManager({
                               setAssignNewBook(v === true)
                             }
                           />
-                          <FieldDescription>
-                            If enabled, book range is unchanged; every leaf from
-                            the first assignable number through the end of the range
-                            gets this assignee. Accounted leaves are skipped.
-                          </FieldDescription>
                         </div>
                       </FieldContent>
+                      <FieldLabel htmlFor="assign-new-book">
+                        New book
+                      </FieldLabel>
                     </Field>
 
                     <Field
@@ -1140,7 +1132,7 @@ export default function BookManager({
                     </Field>
 
                     {assignErrors.assignBlocked ? (
-                      <p className="text-destructive text-sm" role="alert">
+                      <p className="text-sm text-destructive" role="alert">
                         {assignErrors.assignBlocked}
                       </p>
                     ) : null}
@@ -1153,18 +1145,36 @@ export default function BookManager({
                       </Button>
                     </DialogClose>
 
-                    <Button
-                      type="button"
-                      disabled={!canAssign || busy}
-                      onClick={async () => {
-                        const ok = await assignBook()
-                        if (!ok) return
-                        resetAssignForm()
-                        setAssignDialogOpen(false)
-                      }}
-                    >
-                      Assign and close
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        disabled={!canAssign || busy}
+                        onClick={async () => {
+                          const ok = await assignBook()
+                          if (!ok) return
+                          resetAssignForm()
+                          setAssignDialogOpen(false)
+                        }}
+                      >
+                        Assign and close
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={!canAssign || busy}
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+
+                          const ok = await assignBook()
+                          if (!ok) return
+                          resetAssignFormKeepEmployee()
+                          setAssignDialogOpen(true)
+                        }}
+                      >
+                        Assign more
+                      </Button>
+                    </div>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -1224,8 +1234,8 @@ export default function BookManager({
                           autoComplete="off"
                         />
                         <FieldDescription>
-                          Book is inferred from the loaded consumption row for this
-                          leaf number.
+                          Book is inferred from the loaded consumption row for
+                          this leaf number.
                         </FieldDescription>
                         <FieldError
                           errors={
