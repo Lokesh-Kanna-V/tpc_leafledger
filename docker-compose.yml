@@ -18,9 +18,9 @@ services:
       retries: 10
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
     image: leafledger-app
     restart: unless-stopped
     ports:
