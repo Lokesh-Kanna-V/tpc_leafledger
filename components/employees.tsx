@@ -3,6 +3,7 @@
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -32,28 +33,54 @@ import {
   deleteEmployee,
   updateEmployee,
 } from "@/lib/api/employees"
+import type { Office } from "@/lib/api/offices"
 
 type EmployeesProps = {
   employees: Employee[]
+  offices: Office[]
   onReload: () => Promise<void>
 }
 
-export default function Employees({ employees, onReload }: EmployeesProps) {
+export default function Employees({
+  employees,
+  offices,
+  onReload,
+}: EmployeesProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [newName, setNewName] = useState("")
   const [newRole, setNewRole] = useState("")
+  const [newOfficeIds, setNewOfficeIds] = useState<number[]>([])
 
   const [editOpen, setEditOpen] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [editName, setEditName] = useState("")
   const [editRole, setEditRole] = useState("")
+  const [editOfficeIds, setEditOfficeIds] = useState<number[]>([])
+
+  function officeNames(officeIds: number[]): string {
+    const names = officeIds
+      .map((id) => offices.find((o) => o.id === id)?.name)
+      .filter((name): name is string => Boolean(name))
+    return names.length > 0 ? names.join(", ") : "—"
+  }
+
+  function toggleOfficeId(
+    id: number,
+    checked: boolean,
+    setIds: (update: (prev: number[]) => number[]) => void
+  ) {
+    setIds((prev) =>
+      checked ? [...prev, id] : prev.filter((existing) => existing !== id)
+    )
+  }
 
   function openEdit(e: Employee) {
     setEditId(e.id)
     setEditName(e.name)
     setEditRole(e.role)
+    setEditOfficeIds(e.office_ids)
     setEditOpen(true)
     setError(null)
   }
@@ -68,9 +95,10 @@ export default function Employees({ employees, onReload }: EmployeesProps) {
     setBusy(true)
     setError(null)
     try {
-      await createEmployee({ name, role })
+      await createEmployee({ name, role, office_ids: newOfficeIds })
       setNewName("")
       setNewRole("")
+      setNewOfficeIds([])
       await onReload()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add employee")
@@ -90,7 +118,7 @@ export default function Employees({ employees, onReload }: EmployeesProps) {
     setBusy(true)
     setError(null)
     try {
-      await updateEmployee(editId, { name, role })
+      await updateEmployee(editId, { name, role, office_ids: editOfficeIds })
       setEditOpen(false)
       await onReload()
     } catch (err) {
@@ -114,7 +142,7 @@ export default function Employees({ employees, onReload }: EmployeesProps) {
   }
 
   return (
-    <div className="mt-6 space-y-6">
+    <div className="space-y-6">
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
@@ -156,6 +184,40 @@ export default function Employees({ employees, onReload }: EmployeesProps) {
             Add
           </Button>
         </div>
+
+        <Field className="mt-3">
+          <FieldLabel>
+            Offices{" "}
+            <span className="text-muted-foreground">(optional)</span>
+          </FieldLabel>
+          <FieldContent>
+            <div className="flex flex-wrap gap-4 rounded-md border border-input p-2">
+              {offices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No offices yet. Add one in the Offices tab.
+                </p>
+              ) : (
+                offices.map((o) => (
+                  <div key={o.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`emp-new-office-${o.id}`}
+                      checked={newOfficeIds.includes(o.id)}
+                      onCheckedChange={(v) =>
+                        toggleOfficeId(o.id, v === true, setNewOfficeIds)
+                      }
+                    />
+                    <FieldLabel
+                      htmlFor={`emp-new-office-${o.id}`}
+                      className="font-normal"
+                    >
+                      {o.name}
+                    </FieldLabel>
+                  </div>
+                ))
+              )}
+            </div>
+          </FieldContent>
+        </Field>
       </div>
 
       <Table>
@@ -164,13 +226,14 @@ export default function Employees({ employees, onReload }: EmployeesProps) {
             <TableHead className="w-[100px]">ID</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Role</TableHead>
+            <TableHead>Offices</TableHead>
             <TableHead className="w-[200px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {employees.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-muted-foreground">
+              <TableCell colSpan={5} className="text-muted-foreground">
                 No employees yet. Add one above.
               </TableCell>
             </TableRow>
@@ -180,6 +243,7 @@ export default function Employees({ employees, onReload }: EmployeesProps) {
                 <TableCell className="font-medium tabular-nums">{e.id}</TableCell>
                 <TableCell>{e.name}</TableCell>
                 <TableCell>{e.role}</TableCell>
+                <TableCell>{officeNames(e.office_ids)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button
@@ -234,6 +298,39 @@ export default function Employees({ employees, onReload }: EmployeesProps) {
                   onChange={(e) => setEditRole(e.target.value)}
                   autoComplete="off"
                 />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel>
+                Offices{" "}
+                <span className="text-muted-foreground">(optional)</span>
+              </FieldLabel>
+              <FieldContent>
+                <div className="flex flex-wrap gap-4 rounded-md border border-input p-2">
+                  {offices.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No offices yet. Add one in the Offices tab.
+                    </p>
+                  ) : (
+                    offices.map((o) => (
+                      <div key={o.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`emp-edit-office-${o.id}`}
+                          checked={editOfficeIds.includes(o.id)}
+                          onCheckedChange={(v) =>
+                            toggleOfficeId(o.id, v === true, setEditOfficeIds)
+                          }
+                        />
+                        <FieldLabel
+                          htmlFor={`emp-edit-office-${o.id}`}
+                          className="font-normal"
+                        >
+                          {o.name}
+                        </FieldLabel>
+                      </div>
+                    ))
+                  )}
+                </div>
               </FieldContent>
             </Field>
           </FieldGroup>

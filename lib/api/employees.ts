@@ -4,11 +4,13 @@ export type Employee = {
   id: number
   name: string
   role: string
+  office_ids: number[]
 }
 
 export type CreateEmployeeInput = {
   name: string
   role: string
+  office_ids?: number[]
 }
 
 export type UpdateEmployeeInput = CreateEmployeeInput

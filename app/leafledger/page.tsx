@@ -7,7 +7,7 @@ import {
   LogOut,
   LeafIcon,
   BookOpenIcon,
-  Users2Icon,
+  Building2Icon,
   BellIcon,
   BoxesIcon,
 } from "lucide-react"
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 
 import BookManager from "@/components/book-manager"
 import Dashboard from "@/components/dashboard"
-import Employees from "@/components/employees"
+import OfficeManagement from "@/components/office-management"
 import StockManagement from "@/components/stock-management"
 import Alerts from "@/components/alerts"
 import { getBooks } from "@/lib/api/books"
@@ -43,7 +43,7 @@ const mainNav = (alertCount: number): NavItem[] => [
   { label: "Dashboard", icon: LayoutDashboard, id: 0 },
   { label: "Book Manager", icon: BookOpenIcon, id: 1 },
   { label: "Stock Management", icon: BoxesIcon, id: 2 },
-  { label: "Employees", icon: Users2Icon, id: 3 },
+  { label: "Organization", icon: Building2Icon, id: 3 },
   { label: "Alerts", icon: BellIcon, id: 4, badge: alertCount || undefined },
 ]
 
@@ -318,19 +318,22 @@ export default function Home() {
                   <StockManagement lots={lots} onReload={reloadData} />
                 )}
               </>
-            ) : active === "Employees" ? (
+            ) : active === "Organization" ? (
               <>
                 <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
-                  <Users2Icon />
-                  <h1 className="text-xl font-bold">EMPLOYEES</h1>
+                  <Building2Icon />
+                  <h1 className="text-xl font-bold">ORGANIZATION</h1>
                 </div>
                 {dataLoading ? (
                   <p className="mt-6 text-sm text-muted-foreground">
-                    Loading employees…
+                    Loading offices and employees…
                   </p>
-                ) : (
-                  <Employees employees={employees} onReload={reloadData} />
-                )}
+                ) : null}
+                <OfficeManagement
+                  offices={offices}
+                  employees={employees}
+                  onReload={reloadData}
+                />
               </>
             ) : active === "Alerts" ? (
               <>

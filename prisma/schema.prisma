@@ -19,21 +19,33 @@ enum AlertType {
 }
 
 model Office {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
-  books Book[]
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
+  books     Book[]
+  employees EmployeeOffice[]
 
   @@map("offices")
 }
 
 model Employee {
-  id           Int           @id @default(autoincrement())
+  id           Int              @id @default(autoincrement())
   name         String
   role         String
   password     String?
   consumptions Consumption[]
+  offices      EmployeeOffice[]
 
   @@map("employee")
+}
+
+model EmployeeOffice {
+  employee_id Int
+  office_id   Int
+  employee    Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  office      Office   @relation(fields: [office_id], references: [id], onDelete: Cascade)
+
+  @@id([employee_id, office_id])
+  @@map("employee_office")
 }
 
 model Book {
