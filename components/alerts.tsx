@@ -13,8 +13,9 @@ import {
 import { getOverdueAlerts, type AccountingOverdueAlert } from "@/lib/api/alerts"
 
 function formatDate(iso: string): string {
-  // assigned_date is stored as DATE, we keep the ISO YYYY-MM-DD part for display.
-  return iso.slice(0, 10)
+  // assigned_date is stored as DATE; display as DD/MM/YYYY.
+  const [year, month, day] = iso.slice(0, 10).split("-")
+  return `${day}/${month}/${year}`
 }
 
 export default function Alerts() {

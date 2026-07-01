@@ -71,9 +71,10 @@ function dateIsoLocal(): string {
   return `${y}-${m}-${day}`
 }
 
-// assigned_date is stored as DATE, we keep the ISO YYYY-MM-DD part for display.
+// assigned_date is stored as DATE; display as DD/MM/YYYY.
 function formatDate(iso: string): string {
-  return iso.slice(0, 10)
+  const [year, month, day] = iso.slice(0, 10).split("-")
+  return `${day}/${month}/${year}`
 }
 
 function normalizeName(s: string): string {
@@ -175,9 +176,9 @@ export default function BookManager({
     const rows: {
       leafNo: number
       assignedTo: string
-      assignedDate: string
+      assignedDate: string | null
       accounted: boolean
-      accountedDate: string
+      accountedDate: string | null
     }[] = []
     for (let L = b.leafFrom; L <= b.leafTo; L++) {
       const cons = consumptions.find(
@@ -189,12 +190,12 @@ export default function BookManager({
           cons?.user_id != null
             ? (empMap.get(cons.user_id) ?? `User #${cons.user_id}`)
             : "—",
-        assignedDate: cons?.assigned_date ?? "—",
+        assignedDate: cons?.assigned_date ?? null,
         accounted: cons?.accounted ?? false,
         accountedDate:
           cons?.accounted_date != null && String(cons.accounted_date).trim()
             ? String(cons.accounted_date)
-            : "—",
+            : null,
       })
     }
     return rows
@@ -784,7 +785,7 @@ export default function BookManager({
                       </TableCell>
                       <TableCell>{row.assignedTo}</TableCell>
                       <TableCell className="text-muted-foreground tabular-nums">
-                        {row.assignedDate}
+                        {row.assignedDate ? formatDate(row.assignedDate) : "—"}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
@@ -800,7 +801,7 @@ export default function BookManager({
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground tabular-nums">
-                        {row.accountedDate}
+                        {row.accountedDate ? formatDate(row.accountedDate) : "—"}
                       </TableCell>
                     </TableRow>
                   ))}

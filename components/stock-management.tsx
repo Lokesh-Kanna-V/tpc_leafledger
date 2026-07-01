@@ -35,9 +35,10 @@ type StockManagementProps = {
   onReload: () => Promise<void>
 }
 
-// created_at is a timestamp; keep the ISO YYYY-MM-DD part for display.
+// created_at is a timestamp; display as DD/MM/YYYY.
 function formatDate(iso: string): string {
-  return iso.slice(0, 10)
+  const [year, month, day] = iso.slice(0, 10).split("-")
+  return `${day}/${month}/${year}`
 }
 
 export default function StockManagement({
