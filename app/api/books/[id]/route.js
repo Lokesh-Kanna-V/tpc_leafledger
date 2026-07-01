@@ -65,6 +65,24 @@ export async function PUT(request, { params }) {
         : undefined;
   if (dateValue === undefined) return jsonError("initial_assigned_date must be a string or null");
 
+  if (leaf_no_from !== null && leaf_no_to !== null) {
+    const overlap = await query(
+      `SELECT book_number, leaf_no_from, leaf_no_to FROM book
+       WHERE id != $1
+         AND leaf_no_from IS NOT NULL AND leaf_no_to IS NOT NULL
+         AND leaf_no_from <= $2 AND leaf_no_to >= $3
+       LIMIT 1`,
+      [id, leaf_no_to, leaf_no_from],
+    );
+    const conflict = overlap.rows[0];
+    if (conflict) {
+      return jsonError(
+        `Leaves ${leaf_no_from}-${leaf_no_to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`,
+        409,
+      );
+    }
+  }
+
   try {
     const result = await query(
       `UPDATE book

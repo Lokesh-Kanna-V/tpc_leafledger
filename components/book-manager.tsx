@@ -83,6 +83,23 @@ function matchEmployee(
   return employees.find((e) => normalizeName(e.name) === n)
 }
 
+/** Finds another book whose leaf range overlaps [from, to], if any. */
+function findLeafOverlap(
+  apiBooks: Book[],
+  from: number,
+  to: number,
+  excludeBookId: number | null
+): Book | undefined {
+  return apiBooks.find(
+    (b) =>
+      b.id !== excludeBookId &&
+      b.leaf_no_from !== null &&
+      b.leaf_no_to !== null &&
+      b.leaf_no_from <= to &&
+      from <= b.leaf_no_to
+  )
+}
+
 type BookManagerProps = {
   books: BookRow[]
   apiBooks: Book[]
@@ -233,6 +250,13 @@ export default function BookManager({
         e.leafTo = "Leaf to must be greater than or equal to leaf from."
       if (leafMetrics.count <= 0) e.leafTo = "Leaf range must be at least 1."
       if (leafMetrics.count > 50) e.leafTo = "Leaf count cannot exceed 50."
+
+      if (!e.leafTo) {
+        const conflict = findLeafOverlap(apiBooks, from, to, null)
+        if (conflict) {
+          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
+        }
+      }
     }
 
     return e
@@ -245,6 +269,7 @@ export default function BookManager({
     offices,
     assignedTo,
     employees,
+    apiBooks,
   ])
 
   const leafCountLabel =
@@ -425,10 +450,17 @@ export default function BookManager({
       if (!e.leafFrom && !e.leafTo && to < from) {
         e.leafTo = "Leaf to must be greater than or equal to leaf from."
       }
+
+      if (!e.leafFrom && !e.leafTo) {
+        const conflict = findLeafOverlap(apiBooks, from, to, editBookId)
+        if (conflict) {
+          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
+        }
+      }
     }
 
     return e
-  }, [editBookNo, editLeafFrom, editLeafTo])
+  }, [editBookNo, editLeafFrom, editLeafTo, apiBooks, editBookId])
 
   const canEditSave =
     !editErrors.bookNo && !editErrors.leafFrom && !editErrors.leafTo
