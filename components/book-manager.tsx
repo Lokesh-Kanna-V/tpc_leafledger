@@ -71,6 +71,11 @@ function dateIsoLocal(): string {
   return `${y}-${m}-${day}`
 }
 
+// assigned_date is stored as DATE, we keep the ISO YYYY-MM-DD part for display.
+function formatDate(iso: string): string {
+  return iso.slice(0, 10)
+}
+
 function normalizeName(s: string): string {
   return s.trim().toLowerCase()
 }
@@ -1594,6 +1599,7 @@ export default function BookManager({
                 <TableHead>Office</TableHead>
                 <TableHead>Leaf No.</TableHead>
                 <TableHead>Assigned To</TableHead>
+                <TableHead>Assigned Date</TableHead>
                 <TableHead className="w-[110px] text-center">
                   Accounted
                 </TableHead>
@@ -1603,7 +1609,7 @@ export default function BookManager({
             <TableBody>
               {visibleBooks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
+                  <TableCell colSpan={7} className="text-muted-foreground">
                     No books match this view.
                   </TableCell>
                 </TableRow>
@@ -1634,6 +1640,9 @@ export default function BookManager({
                       </span>
                     </TableCell>
                     <TableCell>{b.assignedTo ?? "—"}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {b.assignedDate ? formatDate(b.assignedDate) : "—"}
+                    </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">
                         <Checkbox disabled checked={isBookFullyAccounted(b)} />

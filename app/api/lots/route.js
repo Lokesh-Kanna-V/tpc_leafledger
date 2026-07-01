@@ -9,7 +9,7 @@ const MAX_BOOKS_PER_LOT = 10000;
 
 export async function GET() {
   const result = await query(
-    "SELECT id, lot_number, book_from, book_to FROM lot ORDER BY id",
+    "SELECT id, lot_number, book_from, book_to, created_at FROM lot ORDER BY id",
   );
   return Response.json(result.rows);
 }
@@ -40,7 +40,7 @@ export async function POST(request) {
       const lotRows = await tx.$queryRawUnsafe(
         `INSERT INTO lot (lot_number, book_from, book_to)
          VALUES ($1, $2, $3)
-         RETURNING id, lot_number, book_from, book_to`,
+         RETURNING id, lot_number, book_from, book_to, created_at`,
         lotNumber,
         book_from,
         book_to,

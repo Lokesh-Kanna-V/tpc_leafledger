@@ -14,6 +14,8 @@ export type BookRow = {
   officeName?: string
   bookStatus: BookStatus
   assignedTo?: string
+  /** Earliest assigned_date among this book's assigned leaves, when multiple employees share the book. */
+  assignedDate?: string
   /** Derived: inclusive leaf index for contiguous accounted prefix from leafFrom. */
   accountedThrough: number
   /** Leaves in [leafFrom, leafTo] with a consumption row marked accounted. */
@@ -84,19 +86,23 @@ export function rowsFromDatabase(
       return n !== null && n >= displayLeafFrom && n <= displayLeafTo
     })
 
-    const userIds = [
-      ...new Set(
-        leavesInBook
-          .map((l) => l.user_id)
-          .filter(
-            (id): id is number => typeof id === "number" && Number.isInteger(id)
-          )
-      ),
-    ]
+    const assignedRows = leavesInBook.filter(
+      (l) => typeof l.user_id === "number" && Number.isInteger(l.user_id)
+    )
+
+    const userIds = [...new Set(assignedRows.map((l) => l.user_id as number))]
     const names = userIds
       .map((id) => empMap.get(id) ?? `#${id}`)
       .sort((a, b) => a.localeCompare(b))
     const assignedTo = names.length > 0 ? names.join(", ") : undefined
+
+    // When multiple employees have been assigned leaves in this book, show
+    // the earliest assignment date rather than the most recent one.
+    const assignedDates = assignedRows
+      .map((l) => l.assigned_date)
+      .filter((d): d is string => typeof d === "string" && d.trim() !== "")
+      .sort()
+    const assignedDate = assignedDates.length > 0 ? assignedDates[0] : undefined
 
     let accountedThrough = displayLeafFrom - 1
     let accountedLeafCount = 0
@@ -118,6 +124,7 @@ export function rowsFromDatabase(
         b.office_id === null ? undefined : officeMap.get(b.office_id),
       bookStatus: b.book_status,
       assignedTo,
+      assignedDate,
       accountedThrough,
       accountedLeafCount,
     }

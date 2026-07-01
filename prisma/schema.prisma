@@ -66,10 +66,11 @@ model Book {
 }
 
 model Lot {
-  id          Int    @id @default(autoincrement())
-  lot_number  String @unique
+  id          Int      @id @default(autoincrement())
+  lot_number  String   @unique
   book_from   Int
   book_to     Int
+  created_at  DateTime @default(now())
   books       Book[]
 
   @@map("lot")

@@ -5,12 +5,17 @@ export type Lot = {
   lot_number: string
   book_from: number
   book_to: number
+  created_at: string
 }
 
 export type CreateLotInput = {
   lot_number: string
   book_from: number
   book_to: number
+}
+
+export type UpdateLotInput = {
+  lot_number: string
 }
 
 /**
@@ -31,6 +36,20 @@ export async function getLots(): Promise<Lot[]> {
 export async function createLot(body: CreateLotInput): Promise<Lot> {
   const response = await fetch("/api/lots", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  return parseResponse<Lot>(response)
+}
+
+/**
+ * PUT /api/lots/[id]
+ *
+ * Renames the lot; generated books follow via ON UPDATE CASCADE.
+ */
+export async function updateLot(id: number, body: UpdateLotInput): Promise<Lot> {
+  const response = await fetch(`/api/lots/${id}`, {
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })

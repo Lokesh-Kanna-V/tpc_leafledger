@@ -4,8 +4,18 @@ import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Field,
   FieldContent,
+  FieldDescription,
+  FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -18,11 +28,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { Lot } from "@/lib/api/lots"
-import { createLot, deleteLot } from "@/lib/api/lots"
+import { createLot, deleteLot, updateLot } from "@/lib/api/lots"
 
 type StockManagementProps = {
   lots: Lot[]
   onReload: () => Promise<void>
+}
+
+// created_at is a timestamp; keep the ISO YYYY-MM-DD part for display.
+function formatDate(iso: string): string {
+  return iso.slice(0, 10)
 }
 
 export default function StockManagement({
@@ -35,6 +50,10 @@ export default function StockManagement({
   const [newLotNumber, setNewLotNumber] = useState("")
   const [newFrom, setNewFrom] = useState("")
   const [newTo, setNewTo] = useState("")
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editId, setEditId] = useState<number | null>(null)
+  const [editLotNumber, setEditLotNumber] = useState("")
 
   async function handleAdd() {
     const lot_number = newLotNumber.trim()
@@ -62,6 +81,33 @@ export default function StockManagement({
       await onReload()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add lot")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function openEdit(lot: Lot) {
+    setEditId(lot.id)
+    setEditLotNumber(lot.lot_number)
+    setEditOpen(true)
+    setError(null)
+  }
+
+  async function handleSaveEdit() {
+    if (editId === null) return
+    const lot_number = editLotNumber.trim()
+    if (!lot_number) {
+      setError("Lot number is required.")
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await updateLot(editId, { lot_number })
+      setEditOpen(false)
+      await onReload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update lot")
     } finally {
       setBusy(false)
     }
@@ -149,13 +195,14 @@ export default function StockManagement({
             <TableHead>Book from</TableHead>
             <TableHead>Book to</TableHead>
             <TableHead className="text-right">Books</TableHead>
-            <TableHead className="w-[120px] text-right">Actions</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="w-[200px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {lots.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground">
+              <TableCell colSpan={7} className="text-muted-foreground">
                 No lots yet. Add one above.
               </TableCell>
             </TableRow>
@@ -171,22 +218,75 @@ export default function StockManagement({
                 <TableCell className="text-right tabular-nums">
                   {lot.book_to - lot.book_from + 1}
                 </TableCell>
+                <TableCell className="tabular-nums">
+                  {formatDate(lot.created_at)}
+                </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void handleDelete(lot.id)}
-                  >
-                    Delete
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => openEdit(lot)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void handleDelete(lot.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit lot</DialogTitle>
+          </DialogHeader>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="lot-edit-number">Lot number</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="lot-edit-number"
+                  value={editLotNumber}
+                  onChange={(e) => setEditLotNumber(e.target.value)}
+                  autoComplete="off"
+                />
+                <FieldDescription>
+                  The book range for this lot can&apos;t be changed here since
+                  its books already exist.
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <DialogClose asChild>
+              <Button variant="outline" type="button">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleSaveEdit()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
