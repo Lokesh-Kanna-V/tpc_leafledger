@@ -2,8 +2,24 @@ export function jsonError(message: string, status = 400) {
   return Response.json({ error: message }, { status })
 }
 
-/** PostgreSQL error code when present (e.g. "23505" unique violation). */
+function metaProp(err: unknown, key: string): string | undefined {
+  if (typeof err !== "object" || err === null || !("meta" in err)) return undefined
+  const meta = (err as { meta?: unknown }).meta
+  if (typeof meta !== "object" || meta === null) return undefined
+  const v = (meta as Record<string, unknown>)[key]
+  return typeof v === "string" ? v : undefined
+}
+
+/**
+ * PostgreSQL error code when present (e.g. "23505" unique violation).
+ * `query()` runs SQL via `prisma.$queryRawUnsafe`, which wraps DB errors as
+ * `PrismaClientKnownRequestError` with `code: "P2010"` and the real
+ * Postgres SQLSTATE nested under `.meta.code` — check that first.
+ */
 export function pgCode(err: unknown): string | undefined {
+  const metaCode = metaProp(err, "code")
+  if (metaCode) return metaCode
+
   if (typeof err === "object" && err !== null && "code" in err) {
     const code = (err as { code?: unknown }).code
     return typeof code === "string" ? code : undefined
@@ -18,10 +34,11 @@ function stringProp(err: unknown, key: string): string | undefined {
   return typeof v === "string" ? v : undefined
 }
 
-/** Strips noisy Prisma `$queryRawUnsafe` prefix from messages. */
+/** Strips noisy Prisma `$queryRawUnsafe`/`$executeRawUnsafe` prefix from messages. */
 export function cleanDbMessage(message: string): string {
   return message
-    .replace(/^Invalid `prisma\.\$queryRawUnsafe\(\)` invocation:\s*/i, "")
+    .trim()
+    .replace(/^Invalid `prisma\.\$(?:query|execute)RawUnsafe\(\)` invocation:\s*/i, "")
     .replace(/^Raw query failed\.\s*/i, "")
     .trim()
 }
@@ -35,7 +52,10 @@ export function humanizePgError(
 ): { status: number; message: string } | null {
   const code = pgCode(err)
   const rawMessage = err instanceof Error ? err.message : stringProp(err, "message")
-  const detail = stringProp(err, "detail")
+  // Prisma's wrapped raw-query errors don't carry top-level `detail`/`table`/
+  // `constraint` (those are `pg` driver fields); the same info lives in
+  // `.meta.message` as a single Postgres detail string.
+  const detail = stringProp(err, "detail") ?? metaProp(err, "message")
   const table = stringProp(err, "table")
   const constraint = stringProp(err, "constraint")
 

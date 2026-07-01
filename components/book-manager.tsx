@@ -118,6 +118,13 @@ export default function BookManager({
   const [accountLeafNo, setAccountLeafNo] = useState("")
   const accountLeafInputRef = useRef<HTMLInputElement | null>(null)
 
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editBookId, setEditBookId] = useState<number | null>(null)
+  const [editBookNo, setEditBookNo] = useState("")
+  const [editOfficeId, setEditOfficeId] = useState("")
+  const [editLeafFrom, setEditLeafFrom] = useState("")
+  const [editLeafTo, setEditLeafTo] = useState("")
+
   const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -129,6 +136,7 @@ export default function BookManager({
   const [accountActionError, setAccountActionError] = useState<string | null>(
     null
   )
+  const [editActionError, setEditActionError] = useState<string | null>(null)
 
   /** When set, show per-leaf detail table for this book row id. */
   const [detailBookId, setDetailBookId] = useState<string | null>(null)
@@ -396,6 +404,35 @@ export default function BookManager({
 
   const canAccount = !accountErrors.leafNo
 
+  const editErrors = useMemo(() => {
+    const e: { bookNo?: string; leafFrom?: string; leafTo?: string } = {}
+
+    if (!editBookNo.trim()) e.bookNo = "Book No is required."
+
+    const fromTrim = editLeafFrom.trim()
+    const toTrim = editLeafTo.trim()
+    if (fromTrim || toTrim) {
+      const from = Number.parseInt(fromTrim, 10)
+      const to = Number.parseInt(toTrim, 10)
+
+      if (!fromTrim) e.leafFrom = "Leaf from is required when leaf to is set."
+      else if (!Number.isInteger(from))
+        e.leafFrom = "Leaf from must be a number."
+
+      if (!toTrim) e.leafTo = "Leaf to is required when leaf from is set."
+      else if (!Number.isInteger(to)) e.leafTo = "Leaf to must be a number."
+
+      if (!e.leafFrom && !e.leafTo && to < from) {
+        e.leafTo = "Leaf to must be greater than or equal to leaf from."
+      }
+    }
+
+    return e
+  }, [editBookNo, editLeafFrom, editLeafTo])
+
+  const canEditSave =
+    !editErrors.bookNo && !editErrors.leafFrom && !editErrors.leafTo
+
   function bookTotalLeaves(b: BookRow) {
     return b.leafTo - b.leafFrom + 1
   }
@@ -607,6 +644,54 @@ export default function BookManager({
         bookToUpdateBody({ ...apiBook, book_status: "store" })
       )
       await onReload()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function openEditDialog(b: BookRow) {
+    const apiBook = apiBooks.find((x) => x.id === b.dbId)
+    if (!apiBook) return
+    setEditBookId(apiBook.id)
+    setEditBookNo(apiBook.book_number)
+    setEditOfficeId(apiBook.office_id !== null ? String(apiBook.office_id) : "")
+    setEditLeafFrom(
+      apiBook.leaf_no_from !== null ? String(apiBook.leaf_no_from) : ""
+    )
+    setEditLeafTo(apiBook.leaf_no_to !== null ? String(apiBook.leaf_no_to) : "")
+    setEditActionError(null)
+    setEditDialogOpen(true)
+  }
+
+  async function saveEdit(): Promise<boolean> {
+    if (!canEditSave || editBookId === null) return false
+    const apiBook = apiBooks.find((b) => b.id === editBookId)
+    if (!apiBook) return false
+
+    const officeIdNum = editOfficeId ? Number.parseInt(editOfficeId, 10) : null
+    const fromTrim = editLeafFrom.trim()
+    const toTrim = editLeafTo.trim()
+    const leafFromNum = fromTrim ? Number.parseInt(fromTrim, 10) : null
+    const leafToNum = toTrim ? Number.parseInt(toTrim, 10) : null
+
+    setBusy(true)
+    setEditActionError(null)
+    try {
+      await updateBook(editBookId, {
+        office_id: officeIdNum,
+        book_number: editBookNo.trim(),
+        initial_assigned_date: apiBook.initial_assigned_date,
+        leaf_no_from: leafFromNum,
+        leaf_no_to: leafToNum,
+        book_status: apiBook.book_status,
+      })
+      await onReload()
+      return true
+    } catch (err) {
+      setEditActionError(
+        err instanceof Error ? err.message : "Failed to update book"
+      )
+      return false
     } finally {
       setBusy(false)
     }
@@ -1341,23 +1426,152 @@ export default function BookManager({
             </ButtonGroup>
           </div>
 
+          <Dialog
+            open={editDialogOpen}
+            onOpenChange={(open) => {
+              setEditDialogOpen(open)
+              if (open) setEditActionError(null)
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit book</DialogTitle>
+                <DialogDescription>
+                  Update the office and leaf range for this book.
+                </DialogDescription>
+              </DialogHeader>
+
+              {editActionError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {editActionError}
+                </p>
+              ) : null}
+
+              <FieldGroup>
+                <Field data-invalid={!!editErrors.bookNo}>
+                  <FieldLabel htmlFor="edit-book-no">Book No</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      id="edit-book-no"
+                      value={editBookNo}
+                      onChange={(e) => setEditBookNo(e.target.value)}
+                      aria-invalid={!!editErrors.bookNo}
+                      autoComplete="off"
+                    />
+                    <FieldError
+                      errors={
+                        editErrors.bookNo
+                          ? [{ message: editErrors.bookNo }]
+                          : []
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="edit-book-office">Office</FieldLabel>
+                  <FieldContent>
+                    <select
+                      id="edit-book-office"
+                      className={cn(
+                        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                      )}
+                      value={editOfficeId}
+                      onChange={(e) => setEditOfficeId(e.target.value)}
+                    >
+                      <option value="">No office</option>
+                      {offices.map((o) => (
+                        <option key={o.id} value={String(o.id)}>
+                          {o.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FieldContent>
+                </Field>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Field data-invalid={!!editErrors.leafFrom}>
+                    <FieldLabel htmlFor="edit-leaf-from">Leaf from</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="edit-leaf-from"
+                        inputMode="numeric"
+                        value={editLeafFrom}
+                        onChange={(e) => setEditLeafFrom(e.target.value)}
+                        placeholder="1"
+                        aria-invalid={!!editErrors.leafFrom}
+                      />
+                      <FieldError
+                        errors={
+                          editErrors.leafFrom
+                            ? [{ message: editErrors.leafFrom }]
+                            : []
+                        }
+                      />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={!!editErrors.leafTo}>
+                    <FieldLabel htmlFor="edit-leaf-to">Leaf to</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="edit-leaf-to"
+                        inputMode="numeric"
+                        value={editLeafTo}
+                        onChange={(e) => setEditLeafTo(e.target.value)}
+                        placeholder="50"
+                        aria-invalid={!!editErrors.leafTo}
+                      />
+                      <FieldError
+                        errors={
+                          editErrors.leafTo
+                            ? [{ message: editErrors.leafTo }]
+                            : []
+                        }
+                      />
+                    </FieldContent>
+                  </Field>
+                </div>
+              </FieldGroup>
+
+              <DialogFooter className="sm:justify-between">
+                <DialogClose asChild>
+                  <Button variant="outline" type="button">
+                    Close
+                  </Button>
+                </DialogClose>
+                <Button
+                  type="button"
+                  disabled={!canEditSave || busy}
+                  onClick={async () => {
+                    const ok = await saveEdit()
+                    if (!ok) return
+                    setEditDialogOpen(false)
+                  }}
+                >
+                  Save
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Running Book No.</TableHead>
+                <TableHead>Book Serial No.</TableHead>
                 <TableHead>Office</TableHead>
                 <TableHead>Leaf No.</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead className="w-[110px] text-center">
                   Accounted
                 </TableHead>
-                {/* <TableHead className="w-[100px] text-right">Actions</TableHead> */}
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {visibleBooks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-muted-foreground">
+                  <TableCell colSpan={6} className="text-muted-foreground">
                     No books match this view.
                   </TableCell>
                 </TableRow>
@@ -1393,20 +1607,20 @@ export default function BookManager({
                         <Checkbox disabled checked={isBookFullyAccounted(b)} />
                       </div>
                     </TableCell>
-                    {/* <TableCell className="text-right">
-                  {b.bookStatus === "completed" ||
-                  b.bookStatus === "store" ? null : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => void moveBookToStore(b.bookNo)}
-                    >
-                      Store
-                    </Button>
-                  )}
-                </TableCell> */}
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEditDialog(b)
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
