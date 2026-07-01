@@ -44,11 +44,15 @@ export async function PUT(request, { params }) {
     book_status,
   } = body ?? {};
 
-  if (!Number.isInteger(office_id)) return jsonError("office_id is required");
+  // Stock books may not have an office or leaf range yet, so null is allowed.
+  if (office_id !== null && !Number.isInteger(office_id))
+    return jsonError("office_id must be a whole number or null");
   if (typeof book_number !== "string" || !book_number.trim())
     return jsonError("book_number is required");
-  if (!Number.isInteger(leaf_no_from)) return jsonError("leaf_no_from is required");
-  if (!Number.isInteger(leaf_no_to)) return jsonError("leaf_no_to is required");
+  if (leaf_no_from !== null && !Number.isInteger(leaf_no_from))
+    return jsonError("leaf_no_from must be a whole number or null");
+  if (leaf_no_to !== null && !Number.isInteger(leaf_no_to))
+    return jsonError("leaf_no_to must be a whole number or null");
   if (book_status !== "current" && book_status !== "completed" && book_status !== "store") {
     return jsonError("book_status must be one of: current, completed, store");
   }

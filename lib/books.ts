@@ -61,7 +61,8 @@ export function minAssignableLeaf(
 }
 
 export function displayLeafSpanForBook(b: Book): { from: number; to: number } {
-  return { from: b.leaf_no_from, to: b.leaf_no_to }
+  // Stock books may have no leaf range yet; treat as an empty span.
+  return { from: b.leaf_no_from ?? 0, to: b.leaf_no_to ?? 0 }
 }
 
 export function rowsFromDatabase(
@@ -112,8 +113,9 @@ export function rowsFromDatabase(
       bookNo: b.book_number,
       leafFrom: displayLeafFrom,
       leafTo: displayLeafTo,
-      officeId: b.office_id,
-      officeName: officeMap.get(b.office_id),
+      officeId: b.office_id ?? 0,
+      officeName:
+        b.office_id === null ? undefined : officeMap.get(b.office_id),
       bookStatus: b.book_status,
       assignedTo,
       accountedThrough,

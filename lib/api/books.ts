@@ -4,11 +4,11 @@ export type BookStatus = "current" | "completed" | "store"
 
 export type Book = {
   id: number
-  office_id: number
+  office_id: number | null
   book_number: string
   initial_assigned_date: string | null
-  leaf_no_from: number
-  leaf_no_to: number
+  leaf_no_from: number | null
+  leaf_no_to: number | null
   book_status: BookStatus
 }
 
@@ -21,7 +21,15 @@ export type CreateBookInput = {
   book_status: BookStatus
 }
 
-export type UpdateBookInput = CreateBookInput
+// Stock books can lack an office / leaf range until they are assigned.
+export type UpdateBookInput = {
+  office_id: number | null
+  book_number: string
+  initial_assigned_date: string | null
+  leaf_no_from: number | null
+  leaf_no_to: number | null
+  book_status: BookStatus
+}
 
 /** Build PUT body from an existing row returned by GET. */
 export function bookToUpdateBody(b: Book): UpdateBookInput {

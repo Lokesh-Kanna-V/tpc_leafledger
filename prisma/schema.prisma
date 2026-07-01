@@ -38,17 +38,29 @@ model Employee {
 
 model Book {
   id                     Int        @id @default(autoincrement())
-  office_id              Int
-  office                 Office     @relation(fields: [office_id], references: [id])
+  office_id              Int?
+  office                 Office?    @relation(fields: [office_id], references: [id])
   book_number            String     @unique
   initial_assigned_date  DateTime?  @db.Date
-  leaf_no_from           Int
-  leaf_no_to             Int
+  leaf_no_from           Int?
+  leaf_no_to             Int?
   book_status            BookStatus
+  lot_number             String?
+  lot                    Lot?       @relation(fields: [lot_number], references: [lot_number])
   consumptions           Consumption[]
   alerts                 Alert[]
 
   @@map("book")
+}
+
+model Lot {
+  id          Int    @id @default(autoincrement())
+  lot_number  String @unique
+  book_from   Int
+  book_to     Int
+  books       Book[]
+
+  @@map("lot")
 }
 
 model Consumption {

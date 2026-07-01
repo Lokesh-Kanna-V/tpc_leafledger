@@ -9,22 +9,26 @@ import {
   BookOpenIcon,
   Users2Icon,
   BellIcon,
+  BoxesIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 import BookManager from "@/components/book-manager"
 import Dashboard from "@/components/dashboard"
 import Employees from "@/components/employees"
+import StockManagement from "@/components/stock-management"
 import Alerts from "@/components/alerts"
 import { getBooks } from "@/lib/api/books"
 import { getConsumptions } from "@/lib/api/consumption"
 import { getEmployees } from "@/lib/api/employees"
 import { getOffices } from "@/lib/api/offices"
+import { getLots } from "@/lib/api/lots"
 import { getOverdueAlerts, type AccountingOverdueAlert } from "@/lib/api/alerts"
 import type { Book } from "@/lib/api/books"
 import type { Consumption } from "@/lib/api/consumption"
 import type { Employee } from "@/lib/api/employees"
 import type { Office } from "@/lib/api/offices"
+import type { Lot } from "@/lib/api/lots"
 import { rowsFromDatabase } from "@/lib/books"
 
 type NavItem = {
@@ -38,8 +42,9 @@ type NavItem = {
 const mainNav = (alertCount: number): NavItem[] => [
   { label: "Dashboard", icon: LayoutDashboard, id: 0 },
   { label: "Book Manager", icon: BookOpenIcon, id: 1 },
-  { label: "Employees", icon: Users2Icon, id: 2 },
-  { label: "Alerts", icon: BellIcon, id: 3, badge: alertCount || undefined },
+  { label: "Stock Management", icon: BoxesIcon, id: 2 },
+  { label: "Employees", icon: Users2Icon, id: 3 },
+  { label: "Alerts", icon: BellIcon, id: 4, badge: alertCount || undefined },
 ]
 
 function NavSection({
@@ -125,6 +130,7 @@ export default function Home() {
   const [consumptions, setConsumptions] = useState<Consumption[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [offices, setOffices] = useState<Office[]>([])
+  const [lots, setLots] = useState<Lot[]>([])
   const [alertCount, setAlertCount] = useState<number>(0)
   const [alerts, setAlerts] = useState<AccountingOverdueAlert[]>([])
   const [dataLoading, setDataLoading] = useState(true)
@@ -133,16 +139,18 @@ export default function Home() {
   const reloadData = useCallback(async () => {
     setDataLoading(true)
     try {
-      const [b, c, e, o] = await Promise.all([
+      const [b, c, e, o, l] = await Promise.all([
         getBooks(),
         getConsumptions(),
         getEmployees(),
         getOffices(),
+        getLots(),
       ])
       setApiBooks(b)
       setConsumptions(c)
       setEmployees(e)
       setOffices(o)
+      setLots(l)
       try {
         const alerts = await getOverdueAlerts()
         setAlerts(alerts)
@@ -295,6 +303,20 @@ export default function Home() {
                   consumptions={consumptions}
                   onReload={reloadData}
                 />
+              </>
+            ) : active === "Stock Management" ? (
+              <>
+                <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+                  <BoxesIcon />
+                  <h1 className="text-xl font-bold">STOCK MANAGEMENT</h1>
+                </div>
+                {dataLoading ? (
+                  <p className="mt-6 text-sm text-muted-foreground">
+                    Loading lots…
+                  </p>
+                ) : (
+                  <StockManagement lots={lots} onReload={reloadData} />
+                )}
               </>
             ) : active === "Employees" ? (
               <>
