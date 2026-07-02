@@ -65,6 +65,21 @@ import { cn } from "@/lib/utils"
 
 const BOOKS_PAGE_SIZE = 20
 
+const MONTH_OPTIONS = [
+  { value: "01", label: "January" },
+  { value: "02", label: "February" },
+  { value: "03", label: "March" },
+  { value: "04", label: "April" },
+  { value: "05", label: "May" },
+  { value: "06", label: "June" },
+  { value: "07", label: "July" },
+  { value: "08", label: "August" },
+  { value: "09", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+]
+
 function dateIsoLocal(): string {
   const d = new Date()
   const y = d.getFullYear()
@@ -155,6 +170,8 @@ export default function BookManager({
 
   const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [yearFilter, setYearFilter] = useState("all")
+  const [monthFilter, setMonthFilter] = useState("all")
   const [page, setPage] = useState(1)
 
   const [busy, setBusy] = useState(false)
@@ -321,10 +338,24 @@ export default function BookManager({
     [employees]
   )
 
+  const bookYearOptions = useMemo(() => {
+    const years = new Set<string>()
+    for (const b of books) {
+      if (b.assignedDate) years.add(b.assignedDate.slice(0, 4))
+    }
+    return [...years].sort((a, b) => b.localeCompare(a))
+  }, [books])
+
   const visibleBooks = useMemo(() => {
     let rows = books
     if (statusFilter !== "all") {
       rows = rows.filter((b) => b.bookStatus === statusFilter)
+    }
+    if (yearFilter !== "all") {
+      rows = rows.filter((b) => b.assignedDate?.slice(0, 4) === yearFilter)
+    }
+    if (monthFilter !== "all") {
+      rows = rows.filter((b) => b.assignedDate?.slice(5, 7) === monthFilter)
     }
     const q = searchQuery.trim().toLowerCase()
     if (q) {
@@ -335,7 +366,7 @@ export default function BookManager({
       })
     }
     return rows
-  }, [books, statusFilter, searchQuery])
+  }, [books, statusFilter, yearFilter, monthFilter, searchQuery])
 
   const totalBookPages = Math.max(
     1,
@@ -1542,6 +1573,44 @@ export default function BookManager({
                   />
                 </Field>
               </ButtonGroup>
+
+              <select
+                aria-label="Filter by year"
+                className={cn(
+                  "h-8 w-auto min-w-27.5 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30"
+                )}
+                value={yearFilter}
+                onChange={(e) => {
+                  setYearFilter(e.target.value)
+                  setPage(1)
+                }}
+              >
+                <option value="all">All years</option>
+                {bookYearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                aria-label="Filter by month"
+                className={cn(
+                  "h-8 w-auto min-w-32.5 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30"
+                )}
+                value={monthFilter}
+                onChange={(e) => {
+                  setMonthFilter(e.target.value)
+                  setPage(1)
+                }}
+              >
+                <option value="all">All months</option>
+                {MONTH_OPTIONS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <Button variant="outline" type="button" disabled={busy}>

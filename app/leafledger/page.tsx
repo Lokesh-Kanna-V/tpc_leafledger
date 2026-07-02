@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 import BookManager from "@/components/book-manager"
 import Dashboard from "@/components/dashboard"
 import OfficeManagement from "@/components/office-management"
-import StockManagement from "@/components/stock-management"
+import StockManager from "@/components/stock-manager"
 import Alerts from "@/components/alerts"
 import { getBooks } from "@/lib/api/books"
 import { getConsumptions } from "@/lib/api/consumption"
@@ -42,7 +42,7 @@ type NavItem = {
 const mainNav = (alertCount: number): NavItem[] => [
   { label: "Dashboard", icon: LayoutDashboard, id: 0 },
   { label: "Book Manager", icon: BookOpenIcon, id: 1 },
-  { label: "Stock Management", icon: BoxesIcon, id: 2 },
+  { label: "Stock Manager", icon: BoxesIcon, id: 2 },
   { label: "Organization", icon: Building2Icon, id: 3 },
   { label: "Alerts", icon: BellIcon, id: 4, badge: alertCount || undefined },
 ]
@@ -304,18 +304,18 @@ export default function Home() {
                   onReload={reloadData}
                 />
               </>
-            ) : active === "Stock Management" ? (
+            ) : active === "Stock Manager" ? (
               <>
                 <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
                   <BoxesIcon />
-                  <h1 className="text-xl font-bold">STOCK MANAGEMENT</h1>
+                  <h1 className="text-xl font-bold">STOCK MANAGER</h1>
                 </div>
                 {dataLoading ? (
                   <p className="mt-6 text-sm text-muted-foreground">
                     Loading lots…
                   </p>
                 ) : (
-                  <StockManagement lots={lots} onReload={reloadData} />
+                  <StockManager lots={lots} onReload={reloadData} />
                 )}
               </>
             ) : active === "Organization" ? (
