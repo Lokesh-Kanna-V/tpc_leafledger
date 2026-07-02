@@ -145,10 +145,28 @@ export default function Dashboard({
         <Card size="sm">
           <CardHeader className="border-b">
             <CardTitle className="flex items-center justify-between">
-              Total books
+              Stored
+              <BookXIcon className="h-4 w-4 text-muted-foreground" />
+            </CardTitle>
+            <CardDescription>Books currently in store</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-semibold tabular-nums">
+              {dashboard.storedBooks}
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground tabular-nums">
+              {dashboard.storedBookLeaves} leaves in store
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card size="sm">
+          <CardHeader className="border-b">
+            <CardTitle className="flex items-center justify-between">
+              In Floor
               <BookOpenIcon className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
-            <CardDescription>All running books in the system</CardDescription>
+            <CardDescription>All running books in the office</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold tabular-nums">
@@ -195,28 +213,10 @@ export default function Dashboard({
             </div>
           </CardContent>
         </Card>
-
-        <Card size="sm">
-          <CardHeader className="border-b">
-            <CardTitle className="flex items-center justify-between">
-              Stored
-              <BookXIcon className="h-4 w-4 text-muted-foreground" />
-            </CardTitle>
-            <CardDescription>Books currently in store</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-semibold tabular-nums">
-              {dashboard.storedBooks}
-            </div>
-            <div className="mt-1 text-sm text-muted-foreground tabular-nums">
-              {dashboard.storedBookLeaves} leaves in store
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-        <Card className="xl:col-span-2" size="sm">
+        {/* <Card className="xl:col-span-2" size="sm">
           <CardHeader className="border-b">
             <CardTitle>Recent books</CardTitle>
             <CardDescription>
@@ -263,7 +263,7 @@ export default function Dashboard({
               </TableBody>
             </Table>
           </CardContent>
-        </Card>
+        </Card> */}
 
         <Card
           size="sm"
@@ -292,7 +292,7 @@ export default function Dashboard({
               </button>
             </div>
             {alerts.length ? (
-              <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-red-100/70 via-transparent to-red-100/70 animate-pulse" />
+              <div className="pointer-events-none absolute inset-0 -z-10 animate-pulse bg-linear-to-r from-red-100/70 via-transparent to-red-100/70" />
             ) : null}
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
@@ -340,7 +340,7 @@ export default function Dashboard({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+      {/* <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
         <Card size="sm">
           <CardHeader className="border-b">
             <CardTitle>Next actions</CardTitle>
@@ -408,7 +408,7 @@ export default function Dashboard({
             </Table>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   )
 }

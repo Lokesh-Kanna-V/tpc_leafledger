@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   try {
     const result = await query<EmployeeRow>(
       `SELECT id, name, role, password FROM employee WHERE LOWER(TRIM(name)) = $1 ORDER BY id LIMIT 1`,
-      [nameKey],
+      [nameKey]
     )
     rows = result.rows
   } catch {
@@ -62,10 +62,10 @@ export async function POST(request: Request) {
   }
 
   const roleNorm = emp.role.trim().toLowerCase()
-  if (roleNorm !== "admin") {
+  if (roleNorm !== "admin" && roleNorm !== "developer") {
     return jsonError(
       "Only administrators may sign in to this application.",
-      403,
+      403
     )
   }
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
   } catch {
     return jsonError(
       "Server configuration error: JWT_SECRET is not set or invalid.",
-      500,
+      500
     )
   }
 

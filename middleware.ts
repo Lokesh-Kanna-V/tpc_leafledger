@@ -12,7 +12,7 @@ async function isValidAdminSession(
     const { payload } = await jwtVerify(token, secretBytes)
     const role =
       typeof payload.role === "string" ? payload.role.trim().toLowerCase() : ""
-    return role === "admin"
+    return role === "admin" || role === "developer"
   } catch {
     return false
   }

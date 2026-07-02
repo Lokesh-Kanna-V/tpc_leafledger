@@ -147,6 +147,9 @@ export default function BookManager({
   const [editOfficeId, setEditOfficeId] = useState("")
   const [editLeafFrom, setEditLeafFrom] = useState("")
   const [editLeafTo, setEditLeafTo] = useState("")
+  const [editEmployeeId, setEditEmployeeId] = useState("")
+  const [editNewEmployeeName, setEditNewEmployeeName] = useState("")
+  const [editNewEmployeeRole, setEditNewEmployeeRole] = useState("")
 
   const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -436,7 +439,15 @@ export default function BookManager({
   const canAccount = !accountErrors.leafNo
 
   const editErrors = useMemo(() => {
-    const e: { bookNo?: string; leafFrom?: string; leafTo?: string } = {}
+    const e: {
+      bookNo?: string
+      leafFrom?: string
+      leafTo?: string
+      employee?: string
+      newEmployeeName?: string
+      newEmployeeRole?: string
+      assignBlocked?: string
+    } = {}
 
     if (!editBookNo.trim()) e.bookNo = "Book No is required."
 
@@ -465,11 +476,53 @@ export default function BookManager({
       }
     }
 
+    if (editEmployeeId === "__new__") {
+      if (!editNewEmployeeName.trim()) e.newEmployeeName = "Name is required."
+      if (!editNewEmployeeRole.trim()) e.newEmployeeRole = "Role is required."
+    } else if (editEmployeeId) {
+      const id = Number.parseInt(editEmployeeId, 10)
+      if (!Number.isInteger(id) || !employees.some((emp) => emp.id === id)) {
+        e.employee = "Invalid employee selection."
+      }
+    }
+
+    if (editEmployeeId && !e.leafFrom && !e.leafTo) {
+      const apiBook = apiBooks.find((b) => b.id === editBookId)
+      if (apiBook) {
+        const from = fromTrim ? Number.parseInt(fromTrim, 10) : apiBook.leaf_no_from
+        const to = toTrim ? Number.parseInt(toTrim, 10) : apiBook.leaf_no_to
+        const updatedBook: Book = { ...apiBook, leaf_no_from: from, leaf_no_to: to }
+        const span = displayLeafSpanForBook(updatedBook)
+        const minLeaf = minAssignableLeaf(updatedBook, consumptions)
+        if (minLeaf > span.to) {
+          e.assignBlocked =
+            "Every leaf in this book is already accounted through the end of the range. Nothing left to assign."
+        }
+      }
+    }
+
     return e
-  }, [editBookNo, editLeafFrom, editLeafTo, apiBooks, editBookId])
+  }, [
+    editBookNo,
+    editLeafFrom,
+    editLeafTo,
+    apiBooks,
+    editBookId,
+    editEmployeeId,
+    editNewEmployeeName,
+    editNewEmployeeRole,
+    employees,
+    consumptions,
+  ])
 
   const canEditSave =
-    !editErrors.bookNo && !editErrors.leafFrom && !editErrors.leafTo
+    !editErrors.bookNo &&
+    !editErrors.leafFrom &&
+    !editErrors.leafTo &&
+    !editErrors.employee &&
+    !editErrors.newEmployeeName &&
+    !editErrors.newEmployeeRole &&
+    !editErrors.assignBlocked
 
   function bookTotalLeaves(b: BookRow) {
     return b.leafTo - b.leafFrom + 1
@@ -697,6 +750,9 @@ export default function BookManager({
       apiBook.leaf_no_from !== null ? String(apiBook.leaf_no_from) : ""
     )
     setEditLeafTo(apiBook.leaf_no_to !== null ? String(apiBook.leaf_no_to) : "")
+    setEditEmployeeId("")
+    setEditNewEmployeeName("")
+    setEditNewEmployeeRole("")
     setEditActionError(null)
     setEditDialogOpen(true)
   }
@@ -723,6 +779,38 @@ export default function BookManager({
         leaf_no_to: leafToNum,
         book_status: apiBook.book_status,
       })
+
+      if (editEmployeeId) {
+        let empId: number
+        if (editEmployeeId === "__new__") {
+          const created = await createEmployee({
+            name: editNewEmployeeName.trim(),
+            role: editNewEmployeeRole.trim(),
+          })
+          empId = created.id
+        } else {
+          empId = Number.parseInt(editEmployeeId, 10)
+        }
+
+        const updatedBook: Book = {
+          ...apiBook,
+          leaf_no_from: leafFromNum,
+          leaf_no_to: leafToNum,
+        }
+        const span = displayLeafSpanForBook(updatedBook)
+        const minLeaf = minAssignableLeaf(updatedBook, consumptions)
+        const today = dateIsoLocal()
+
+        for (let L = minLeaf; L <= span.to; L++) {
+          await upsertConsumptionAssignment(editBookId, String(L), {
+            user_id: empId,
+            assigned_date: today,
+            accounted: false,
+            accounted_date: null,
+          })
+        }
+      }
+
       await onReload()
       return true
     } catch (err) {
@@ -792,6 +880,7 @@ export default function BookManager({
                           <Checkbox
                             checked={row.accounted}
                             disabled
+                            className="data-[state=checked]:border-green-600 data-[state=checked]:bg-green-600 data-[state=checked]:text-white dark:data-[state=checked]:bg-green-600"
                             aria-label={
                               row.accounted
                                 ? `Leaf ${row.leafNo} accounted`
@@ -1475,7 +1564,8 @@ export default function BookManager({
               <DialogHeader>
                 <DialogTitle>Edit book</DialogTitle>
                 <DialogDescription>
-                  Update the office and leaf range for this book.
+                  Update the office and leaf range for this book, and
+                  optionally assign it to an employee.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1570,6 +1660,99 @@ export default function BookManager({
                     </FieldContent>
                   </Field>
                 </div>
+
+                <Field data-invalid={!!editErrors.employee}>
+                  <FieldLabel htmlFor="edit-employee">
+                    Assign to{" "}
+                    <span className="text-muted-foreground">(optional)</span>
+                  </FieldLabel>
+                  <FieldContent>
+                    <select
+                      id="edit-employee"
+                      className={cn(
+                        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                      )}
+                      value={editEmployeeId}
+                      onChange={(e) => setEditEmployeeId(e.target.value)}
+                      aria-invalid={!!editErrors.employee}
+                    >
+                      <option value="">No change</option>
+                      {employeesSortedForAssign.map((emp) => (
+                        <option key={emp.id} value={String(emp.id)}>
+                          {emp.name} ({emp.role})
+                        </option>
+                      ))}
+                      <option value="__new__">+ Add new employee…</option>
+                    </select>
+                    <FieldDescription>
+                      Assigns this book&rsquo;s remaining unaccounted leaves to
+                      the selected employee.
+                    </FieldDescription>
+                    <FieldError
+                      errors={
+                        editErrors.employee
+                          ? [{ message: editErrors.employee }]
+                          : []
+                      }
+                    />
+                  </FieldContent>
+                </Field>
+
+                {editEmployeeId === "__new__" ? (
+                  <>
+                    <Field data-invalid={!!editErrors.newEmployeeName}>
+                      <FieldLabel htmlFor="edit-new-emp-name">
+                        New employee name
+                      </FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="edit-new-emp-name"
+                          value={editNewEmployeeName}
+                          onChange={(e) =>
+                            setEditNewEmployeeName(e.target.value)
+                          }
+                          placeholder="Full name"
+                          autoComplete="off"
+                          aria-invalid={!!editErrors.newEmployeeName}
+                        />
+                        <FieldError
+                          errors={
+                            editErrors.newEmployeeName
+                              ? [{ message: editErrors.newEmployeeName }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                    <Field data-invalid={!!editErrors.newEmployeeRole}>
+                      <FieldLabel htmlFor="edit-new-emp-role">Role</FieldLabel>
+                      <FieldContent>
+                        <Input
+                          id="edit-new-emp-role"
+                          value={editNewEmployeeRole}
+                          onChange={(e) =>
+                            setEditNewEmployeeRole(e.target.value)
+                          }
+                          autoComplete="off"
+                          aria-invalid={!!editErrors.newEmployeeRole}
+                        />
+                        <FieldError
+                          errors={
+                            editErrors.newEmployeeRole
+                              ? [{ message: editErrors.newEmployeeRole }]
+                              : []
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                  </>
+                ) : null}
+
+                {editErrors.assignBlocked ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {editErrors.assignBlocked}
+                  </p>
+                ) : null}
               </FieldGroup>
 
               <DialogFooter className="sm:justify-between">
@@ -1646,7 +1829,11 @@ export default function BookManager({
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">
-                        <Checkbox disabled checked={isBookFullyAccounted(b)} />
+                        <Checkbox
+                          disabled
+                          checked={isBookFullyAccounted(b)}
+                          className="data-[state=checked]:border-green-600 data-[state=checked]:bg-green-600 data-[state=checked]:text-white dark:data-[state=checked]:bg-green-600"
+                        />
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
