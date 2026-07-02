@@ -63,6 +63,8 @@ import {
 } from "@/lib/api/consumption"
 import { cn } from "@/lib/utils"
 
+const BOOKS_PAGE_SIZE = 20
+
 function dateIsoLocal(): string {
   const d = new Date()
   const y = d.getFullYear()
@@ -153,6 +155,7 @@ export default function BookManager({
 
   const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [page, setPage] = useState(1)
 
   const [busy, setBusy] = useState(false)
   const [addActionError, setAddActionError] = useState<string | null>(null)
@@ -334,6 +337,20 @@ export default function BookManager({
     return rows
   }, [books, statusFilter, searchQuery])
 
+  const totalBookPages = Math.max(
+    1,
+    Math.ceil(visibleBooks.length / BOOKS_PAGE_SIZE)
+  )
+  const currentBookPage = Math.min(page, totalBookPages)
+  const pagedBooks = useMemo(
+    () =>
+      visibleBooks.slice(
+        (currentBookPage - 1) * BOOKS_PAGE_SIZE,
+        currentBookPage * BOOKS_PAGE_SIZE
+      ),
+    [visibleBooks, currentBookPage]
+  )
+
   const assignErrors = useMemo(() => {
     const e: {
       bookNo?: string
@@ -489,9 +506,15 @@ export default function BookManager({
     if (editEmployeeId && !e.leafFrom && !e.leafTo) {
       const apiBook = apiBooks.find((b) => b.id === editBookId)
       if (apiBook) {
-        const from = fromTrim ? Number.parseInt(fromTrim, 10) : apiBook.leaf_no_from
+        const from = fromTrim
+          ? Number.parseInt(fromTrim, 10)
+          : apiBook.leaf_no_from
         const to = toTrim ? Number.parseInt(toTrim, 10) : apiBook.leaf_no_to
-        const updatedBook: Book = { ...apiBook, leaf_no_from: from, leaf_no_to: to }
+        const updatedBook: Book = {
+          ...apiBook,
+          leaf_no_from: from,
+          leaf_no_to: to,
+        }
         const span = displayLeafSpanForBook(updatedBook)
         const minLeaf = minAssignableLeaf(updatedBook, consumptions)
         if (minLeaf > span.to) {
@@ -890,7 +913,9 @@ export default function BookManager({
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground tabular-nums">
-                        {row.accountedDate ? formatDate(row.accountedDate) : "—"}
+                        {row.accountedDate
+                          ? formatDate(row.accountedDate)
+                          : "—"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -929,7 +954,7 @@ export default function BookManager({
                   if (open) setAddActionError(null)
                 }}
               >
-                <Tooltip>
+                {/* <Tooltip>
                   <TooltipTrigger asChild>
                     <DialogTrigger asChild>
                       <Button
@@ -944,7 +969,7 @@ export default function BookManager({
                   <TooltipContent>
                     <p>Add Books</p>
                   </TooltipContent>
-                </Tooltip>
+                </Tooltip> */}
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Add new book</DialogTitle>
@@ -1149,7 +1174,7 @@ export default function BookManager({
                   if (open) setAssignActionError(null)
                 }}
               >
-                <Tooltip>
+                {/* <Tooltip>
                   <TooltipTrigger asChild>
                     <DialogTrigger asChild>
                       <Button
@@ -1164,7 +1189,7 @@ export default function BookManager({
                   <TooltipContent>
                     <p>Assign Books</p>
                   </TooltipContent>
-                </Tooltip>
+                </Tooltip> */}
 
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
@@ -1399,7 +1424,7 @@ export default function BookManager({
                   if (open) setAccountActionError(null)
                 }}
               >
-                <Tooltip>
+                {/* <Tooltip>
                   <TooltipTrigger asChild>
                     <DialogTrigger asChild>
                       <Button
@@ -1414,7 +1439,7 @@ export default function BookManager({
                   <TooltipContent>
                     <p>Account leaf</p>
                   </TooltipContent>
-                </Tooltip>
+                </Tooltip> */}
 
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
@@ -1510,7 +1535,10 @@ export default function BookManager({
                     type="search"
                     placeholder="Search..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setPage(1)
+                    }}
                   />
                 </Field>
               </ButtonGroup>
@@ -1524,29 +1552,32 @@ export default function BookManager({
               <Button
                 variant={statusFilter === "current" ? "default" : "outline"}
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setStatusFilter((f) => (f === "current" ? "all" : "current"))
-                }
+                  setPage(1)
+                }}
               >
                 Current Books
               </Button>
               <Button
                 variant={statusFilter === "completed" ? "default" : "outline"}
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setStatusFilter((f) =>
                     f === "completed" ? "all" : "completed"
                   )
-                }
+                  setPage(1)
+                }}
               >
                 Completed Books
               </Button>
               <Button
                 variant={statusFilter === "store" ? "default" : "outline"}
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setStatusFilter((f) => (f === "store" ? "all" : "store"))
-                }
+                  setPage(1)
+                }}
               >
                 Stored Books
               </Button>
@@ -1564,8 +1595,8 @@ export default function BookManager({
               <DialogHeader>
                 <DialogTitle>Edit book</DialogTitle>
                 <DialogDescription>
-                  Update the office and leaf range for this book, and
-                  optionally assign it to an employee.
+                  Update the office and leaf range for this book, and optionally
+                  assign it to an employee.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1798,7 +1829,7 @@ export default function BookManager({
                   </TableCell>
                 </TableRow>
               ) : (
-                visibleBooks.map((b) => (
+                pagedBooks.map((b) => (
                   <TableRow
                     key={b.id}
                     className="cursor-pointer hover:bg-muted/60"
@@ -1855,6 +1886,32 @@ export default function BookManager({
               )}
             </TableBody>
           </Table>
+
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Page {currentBookPage} of {totalBookPages} · {visibleBooks.length}{" "}
+              book
+              {visibleBooks.length === 1 ? "" : "s"}
+            </p>
+            <ButtonGroup>
+              <Button
+                variant="outline"
+                type="button"
+                disabled={currentBookPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                type="button"
+                disabled={currentBookPage >= totalBookPages}
+                onClick={() => setPage((p) => Math.min(totalBookPages, p + 1))}
+              >
+                Next
+              </Button>
+            </ButtonGroup>
+          </div>
         </>
       )}
     </div>
