@@ -9,7 +9,10 @@ const MAX_BOOKS_PER_LOT = 10000;
 
 export async function GET() {
   const result = await query(
-    "SELECT id, lot_number, book_from, book_to, created_at FROM lot ORDER BY id",
+    `SELECT id, lot_number, book_from, book_to, created_at FROM lot
+     ORDER BY
+       CASE WHEN lot_number ~ '^[0-9]+$' THEN lot_number::int END DESC NULLS LAST,
+       lot_number DESC`,
   );
   return Response.json(result.rows);
 }
