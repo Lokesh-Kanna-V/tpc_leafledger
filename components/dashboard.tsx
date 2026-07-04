@@ -92,7 +92,10 @@ export default function Dashboard({
       0
     )
 
-    const inFloorBooks = books.filter((b) => b.inFloor && !isBookAccounted(b))
+    const inFloorBooks = books.filter(
+      (b) =>
+        b.inFloor && String(b.bookStatus ?? "").toLowerCase() === "store"
+    )
     const inFloorCount = inFloorBooks.length
     const inFloorLeaves = inFloorBooks.reduce((sum, b) => sum + b.leafCount, 0)
     const inFloorAvgLeaves = inFloorCount
@@ -173,7 +176,7 @@ export default function Dashboard({
               In Floor
               <BookOpenIcon className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
-            <CardDescription>In floor and not yet accounted</CardDescription>
+            <CardDescription>Taken to floor, not yet assigned</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold tabular-nums">

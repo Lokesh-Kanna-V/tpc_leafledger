@@ -57,10 +57,7 @@ function formatDate(iso: string): string {
   return `${day}/${month}/${year}`
 }
 
-export default function StockManager({
-  lots,
-  onReload,
-}: StockManagerProps) {
+export default function StockManager({ lots, onReload }: StockManagerProps) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -219,7 +216,11 @@ export default function StockManager({
               />
             </FieldContent>
           </Field>
-          <Button type="button" disabled={busy} onClick={() => void handleAdd()}>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleAdd()}
+          >
             Add
           </Button>
         </div>
@@ -262,7 +263,7 @@ export default function StockManager({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
+            {/* <TableHead className="w-[100px]">ID</TableHead> */}
             <TableHead>Lot number</TableHead>
             <TableHead>Book from</TableHead>
             <TableHead>Book to</TableHead>
@@ -283,9 +284,9 @@ export default function StockManager({
           ) : (
             visibleLots.map((lot) => (
               <TableRow key={lot.id}>
-                <TableCell className="font-medium tabular-nums">
+                {/* <TableCell className="font-medium tabular-nums">
                   {lot.id}
-                </TableCell>
+                </TableCell> */}
                 <TableCell>{lot.lot_number}</TableCell>
                 <TableCell className="tabular-nums">{lot.book_from}</TableCell>
                 <TableCell className="tabular-nums">{lot.book_to}</TableCell>

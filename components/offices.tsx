@@ -154,7 +154,11 @@ export default function Offices({ offices, onReload }: OfficesProps) {
               />
             </FieldContent>
           </Field>
-          <Button type="button" disabled={busy} onClick={() => void handleAdd()}>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleAdd()}
+          >
             Add
           </Button>
         </div>
@@ -163,7 +167,7 @@ export default function Offices({ offices, onReload }: OfficesProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
+            {/* <TableHead className="w-[100px]">ID</TableHead> */}
             <TableHead>Name</TableHead>
             <TableHead className="w-35 text-center">Leaf alert days</TableHead>
             <TableHead className="w-[200px] text-right">Actions</TableHead>
@@ -179,7 +183,7 @@ export default function Offices({ offices, onReload }: OfficesProps) {
           ) : (
             offices.map((o) => (
               <TableRow key={o.id}>
-                <TableCell className="font-medium tabular-nums">{o.id}</TableCell>
+                {/* <TableCell className="font-medium tabular-nums">{o.id}</TableCell> */}
                 <TableCell>{o.name}</TableCell>
                 <TableCell className="text-center tabular-nums">
                   {o.leaf_alert_days}

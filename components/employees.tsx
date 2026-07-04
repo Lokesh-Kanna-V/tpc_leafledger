@@ -187,8 +187,7 @@ export default function Employees({
 
         <Field className="mt-3">
           <FieldLabel>
-            Offices{" "}
-            <span className="text-muted-foreground">(optional)</span>
+            Offices <span className="text-muted-foreground">(optional)</span>
           </FieldLabel>
           <FieldContent>
             <div className="flex flex-wrap gap-4 rounded-md border border-input p-2">
@@ -223,7 +222,7 @@ export default function Employees({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
+            {/* <TableHead className="w-[100px]">ID</TableHead> */}
             <TableHead>Name</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Offices</TableHead>
@@ -240,7 +239,7 @@ export default function Employees({
           ) : (
             employees.map((e) => (
               <TableRow key={e.id}>
-                <TableCell className="font-medium tabular-nums">{e.id}</TableCell>
+                {/* <TableCell className="font-medium tabular-nums">{e.id}</TableCell> */}
                 <TableCell>{e.name}</TableCell>
                 <TableCell>{e.role}</TableCell>
                 <TableCell>{officeNames(e.office_ids)}</TableCell>
