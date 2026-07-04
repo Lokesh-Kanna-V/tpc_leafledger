@@ -742,6 +742,7 @@ export default function BookManager({
         leaf_no_from: from,
         leaf_no_to: to,
         book_status: "current",
+        in_floor: true,
       })
 
       const emp = empName ? matchEmployee(employees, empName) : undefined
@@ -794,6 +795,21 @@ export default function BookManager({
     }
   }
 
+  async function toggleInFloor(row: BookRow) {
+    const apiBook = apiBooks.find((b) => b.id === row.dbId)
+    if (!apiBook) return
+    setBusy(true)
+    try {
+      await updateBook(
+        apiBook.id,
+        bookToUpdateBody({ ...apiBook, in_floor: !apiBook.in_floor })
+      )
+      await onReload()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function openEditDialog(b: BookRow) {
     const apiBook = apiBooks.find((x) => x.id === b.dbId)
     if (!apiBook) return
@@ -832,6 +848,7 @@ export default function BookManager({
         leaf_no_from: leafFromNum,
         leaf_no_to: leafToNum,
         book_status: apiBook.book_status,
+        in_floor: apiBook.in_floor,
       })
 
       if (editEmployeeId) {
@@ -1886,6 +1903,9 @@ export default function BookManager({
                 <TableHead>Leaf No.</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Assigned Date</TableHead>
+                <TableHead className="w-[100px] text-center">
+                  In Floor
+                </TableHead>
                 <TableHead className="w-[110px] text-center">
                   Accounted
                 </TableHead>
@@ -1895,7 +1915,7 @@ export default function BookManager({
             <TableBody>
               {visibleBooks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground">
+                  <TableCell colSpan={8} className="text-muted-foreground">
                     No books match this view.
                   </TableCell>
                 </TableRow>
@@ -1936,6 +1956,19 @@ export default function BookManager({
                     <TableCell>{b.assignedTo ?? "—"}</TableCell>
                     <TableCell className="tabular-nums">
                       {b.assignedDate ? formatDate(b.assignedDate) : "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div
+                        className="flex justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          disabled={busy}
+                          checked={b.inFloor}
+                          onCheckedChange={() => toggleInFloor(b)}
+                          aria-label={`Toggle in floor for book ${b.bookNo}`}
+                        />
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">

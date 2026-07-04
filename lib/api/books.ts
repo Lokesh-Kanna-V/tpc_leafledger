@@ -10,6 +10,7 @@ export type Book = {
   leaf_no_from: number | null
   leaf_no_to: number | null
   book_status: BookStatus
+  in_floor: boolean
 }
 
 export type CreateBookInput = {
@@ -19,6 +20,7 @@ export type CreateBookInput = {
   leaf_no_from: number
   leaf_no_to: number
   book_status: BookStatus
+  in_floor: boolean
 }
 
 // Stock books can lack an office / leaf range until they are assigned.
@@ -29,6 +31,7 @@ export type UpdateBookInput = {
   leaf_no_from: number | null
   leaf_no_to: number | null
   book_status: BookStatus
+  in_floor: boolean
 }
 
 /** Build PUT body from an existing row returned by GET. */
@@ -40,6 +43,7 @@ export function bookToUpdateBody(b: Book): UpdateBookInput {
     leaf_no_from: b.leaf_no_from,
     leaf_no_to: b.leaf_no_to,
     book_status: b.book_status,
+    in_floor: b.in_floor,
   }
 }
 

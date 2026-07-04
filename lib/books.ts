@@ -13,6 +13,8 @@ export type BookRow = {
   officeId: number
   officeName?: string
   bookStatus: BookStatus
+  /** Whether staff have marked this book as physically in floor (office) use. */
+  inFloor: boolean
   assignedTo?: string
   /** Earliest assigned_date among this book's assigned leaves, when multiple employees share the book. */
   assignedDate?: string
@@ -135,6 +137,7 @@ export function rowsFromDatabase(
       officeName:
         b.office_id === null ? undefined : officeMap.get(b.office_id),
       bookStatus: b.book_status,
+      inFloor: b.in_floor,
       assignedTo,
       assignedDate,
       accountedThrough,

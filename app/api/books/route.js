@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const result = await query(
-    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status FROM book ORDER BY id",
+    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor FROM book ORDER BY id",
   );
   return Response.json(result.rows);
 }
@@ -25,6 +25,7 @@ export async function POST(request) {
     leaf_no_from,
     leaf_no_to,
     book_status,
+    in_floor,
   } = body ?? {};
 
   if (!Number.isInteger(office_id)) return jsonError("office_id is required");
@@ -35,6 +36,7 @@ export async function POST(request) {
   if (book_status !== "current" && book_status !== "completed" && book_status !== "store") {
     return jsonError("book_status must be one of: current, completed, store");
   }
+  const inFloorValue = typeof in_floor === "boolean" ? in_floor : false;
 
   const dateValue =
     initial_assigned_date === undefined || initial_assigned_date === null
@@ -69,10 +71,10 @@ export async function POST(request) {
   try {
     const result = await query(
       `INSERT INTO book
-        (office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status)
-       VALUES ($1, $2, $3::date, $4, $5, $6::"BookStatus")
-       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status`,
-      [office_id, book_number.trim(), dateValue, leaf_no_from, leaf_no_to, derivedStatus],
+        (office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor)
+       VALUES ($1, $2, $3::date, $4, $5, $6::"BookStatus", $7)
+       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor`,
+      [office_id, book_number.trim(), dateValue, leaf_no_from, leaf_no_to, derivedStatus, inFloorValue],
     );
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {

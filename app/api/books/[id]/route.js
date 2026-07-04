@@ -12,7 +12,7 @@ export async function GET(_req, { params }) {
   }
 
   const result = await query(
-    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status FROM book WHERE id = $1",
+    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor FROM book WHERE id = $1",
     [id],
   );
   const book = result.rows[0];
@@ -42,6 +42,7 @@ export async function PUT(request, { params }) {
     leaf_no_from,
     leaf_no_to,
     book_status,
+    in_floor,
   } = body ?? {};
 
   // Stock books may not have an office or leaf range yet, so null is allowed.
@@ -56,6 +57,8 @@ export async function PUT(request, { params }) {
   if (book_status !== "current" && book_status !== "completed" && book_status !== "store") {
     return jsonError("book_status must be one of: current, completed, store");
   }
+  if (typeof in_floor !== "boolean")
+    return jsonError("in_floor must be a boolean");
 
   const dateValue =
     initial_assigned_date === undefined || initial_assigned_date === null
@@ -91,9 +94,10 @@ export async function PUT(request, { params }) {
            initial_assigned_date = $3::date,
            leaf_no_from = $4,
            leaf_no_to = $5,
-           book_status = $6::"BookStatus"
-       WHERE id = $7
-       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status`,
+           book_status = $6::"BookStatus",
+           in_floor = $7
+       WHERE id = $8
+       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor`,
       [
         office_id,
         book_number.trim(),
@@ -101,6 +105,7 @@ export async function PUT(request, { params }) {
         leaf_no_from,
         leaf_no_to,
         book_status,
+        in_floor,
         id,
       ],
     );

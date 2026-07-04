@@ -92,6 +92,13 @@ export default function Dashboard({
       0
     )
 
+    const inFloorBooks = books.filter((b) => b.inFloor && !isBookAccounted(b))
+    const inFloorCount = inFloorBooks.length
+    const inFloorLeaves = inFloorBooks.reduce((sum, b) => sum + b.leafCount, 0)
+    const inFloorAvgLeaves = inFloorCount
+      ? Math.round((inFloorLeaves / inFloorCount) * 10) / 10
+      : 0
+
     const needsAccounting = books.filter((b) => !isBookAccounted(b)).slice(0, 5)
 
     const byAssignee = Object.entries(
@@ -125,6 +132,9 @@ export default function Dashboard({
       currentBookLeaves: totalCurrentLeaves,
       storedBooks: storeBooks.length,
       storedBookLeaves,
+      inFloorCount,
+      inFloorLeaves,
+      inFloorAvgLeaves,
       needsAccounting,
       byAssignee,
       recent,
@@ -163,14 +173,15 @@ export default function Dashboard({
               In Floor
               <BookOpenIcon className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
-            <CardDescription>All running books in the office</CardDescription>
+            <CardDescription>In floor and not yet accounted</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold tabular-nums">
-              {dashboard.total}
+              {dashboard.inFloorCount}
             </div>
             <div className="mt-1 text-sm text-muted-foreground tabular-nums">
-              {dashboard.totalLeaves} leaves • avg {dashboard.avgLeaves}/book
+              {dashboard.inFloorLeaves} leaves • avg {dashboard.inFloorAvgLeaves}
+              /book
             </div>
           </CardContent>
         </Card>
