@@ -9,6 +9,8 @@ export type Book = {
   initial_assigned_date: string | null
   leaf_no_from: number | null
   leaf_no_to: number | null
+  /** Calendar year this book's leaf range belongs to; server-assigned when the range is first set. */
+  leaf_year: number | null
   book_status: BookStatus
   in_floor: boolean
 }

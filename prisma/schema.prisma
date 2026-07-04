@@ -57,6 +57,8 @@ model Book {
   initial_assigned_date  DateTime?  @db.Date
   leaf_no_from           Int?
   leaf_no_to             Int?
+  /// Calendar year this book's leaf_no_from/leaf_no_to range belongs to; raw leaf numbers restart at 1 each year, scoped by this field.
+  leaf_year              Int?
   book_status            BookStatus
   in_floor               Boolean    @default(false)
   lot_number             String?

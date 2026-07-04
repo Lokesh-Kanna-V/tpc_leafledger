@@ -12,6 +12,10 @@ export async function GET() {
     `SELECT id, lot_number, book_from, book_to, created_at FROM lot
      ORDER BY
        CASE WHEN lot_number ~ '^[0-9]+$' THEN lot_number::int END DESC NULLS LAST,
+       CASE WHEN lot_number ~ '^[0-9]{4}-[0-9]+$'
+         THEN split_part(lot_number, '-', 1)::int END DESC NULLS LAST,
+       CASE WHEN lot_number ~ '^[0-9]{4}-[0-9]+$'
+         THEN split_part(lot_number, '-', 2)::int END DESC NULLS LAST,
        lot_number DESC`,
   );
   return Response.json(result.rows);
@@ -36,7 +40,11 @@ export async function POST(request) {
   if (book_to - book_from + 1 > MAX_BOOKS_PER_LOT)
     return jsonError(`A lot cannot contain more than ${MAX_BOOKS_PER_LOT} books`);
 
-  const lotNumber = lot_number.trim();
+  // Admins re-enter plain sequential numbers (1, 2, 3...) each year; the
+  // current year is prefixed automatically so the full value stays unique
+  // across years without the admin having to track it.
+  const year = new Date().getFullYear();
+  const lotNumber = `${year}-${lot_number.trim()}`;
 
   try {
     const lot = await prisma.$transaction(async (tx) => {
@@ -51,11 +59,12 @@ export async function POST(request) {
       // One "store" book per number in the range, tagged with this lot.
       await tx.$executeRawUnsafe(
         `INSERT INTO book (book_number, lot_number, book_status)
-         SELECT gs::text, $1, 'store'::"BookStatus"
+         SELECT $4::text || '-' || gs::text, $1, 'store'::"BookStatus"
          FROM generate_series($2::int, $3::int) AS gs`,
         lotNumber,
         book_from,
         book_to,
+        String(year),
       );
       return lotRows[0];
     });

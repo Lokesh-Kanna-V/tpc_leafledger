@@ -33,8 +33,11 @@ export const DEFAULT_BOOK_LEAF_COUNT = 50
 
 export type OfficeLite = { id: number; name: string }
 
+/** Strips an optional "YYYY-" year prefix (e.g. "2026-5" -> "5") before parsing. */
 export function parseLeafNo(leafNo: string): number | null {
-  const n = Number.parseInt(String(leafNo).trim(), 10)
+  const trimmed = String(leafNo).trim()
+  const withoutYear = trimmed.replace(/^\d{4}-/, "")
+  const n = Number.parseInt(withoutYear, 10)
   return Number.isFinite(n) ? n : null
 }
 

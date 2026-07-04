@@ -106,21 +106,34 @@ function matchEmployee(
   return employees.find((e) => normalizeName(e.name) === n)
 }
 
-/** Finds another book whose leaf range overlaps [from, to], if any. */
+/** Finds another book in the same leaf-numbering year whose leaf range overlaps [from, to], if any. */
 function findLeafOverlap(
   apiBooks: Book[],
   from: number,
   to: number,
-  excludeBookId: number | null
+  excludeBookId: number | null,
+  year: number | null
 ): Book | undefined {
   return apiBooks.find(
     (b) =>
       b.id !== excludeBookId &&
+      (b.leaf_year ?? null) === year &&
       b.leaf_no_from !== null &&
       b.leaf_no_to !== null &&
       b.leaf_no_from <= to &&
       from <= b.leaf_no_to
   )
+}
+
+/**
+ * The leaf-numbering year a book's range belongs (or would belong) to: its
+ * own leaf_year if set, else the current year for a first-time assignment,
+ * else null for a pre-existing untagged (legacy) range.
+ */
+function effectiveLeafYear(apiBook: Book | undefined): number | null {
+  if (!apiBook) return new Date().getFullYear()
+  if (apiBook.leaf_year !== null) return apiBook.leaf_year
+  return apiBook.leaf_no_from === null ? new Date().getFullYear() : null
 }
 
 type BookManagerProps = {
@@ -281,7 +294,13 @@ export default function BookManager({
       if (leafMetrics.count > 50) e.leafTo = "Leaf count cannot exceed 50."
 
       if (!e.leafTo) {
-        const conflict = findLeafOverlap(apiBooks, from, to, null)
+        const conflict = findLeafOverlap(
+          apiBooks,
+          from,
+          to,
+          null,
+          new Date().getFullYear()
+        )
         if (conflict) {
           e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
         }
@@ -473,11 +492,13 @@ export default function BookManager({
       e.leafNo = "Leaf no. is required."
       return e
     }
-    if (!/^\d+$/.test(raw)) {
-      e.leafNo = "Enter a positive whole leaf number."
+    const plainMatch = /^\d+$/.test(raw)
+    const yearPrefixedMatch = /^\d{4}-\d+$/.test(raw)
+    if (!plainMatch && !yearPrefixedMatch) {
+      e.leafNo = "Enter a leaf number, e.g. 5 or 2026-5."
       return e
     }
-    const n = Number.parseInt(raw, 10)
+    const n = Number.parseInt(plainMatch ? raw : raw.split("-")[1], 10)
     if (n < 1) {
       e.leafNo = "Leaf no. must be at least 1."
     }
@@ -517,7 +538,14 @@ export default function BookManager({
       }
 
       if (!e.leafFrom && !e.leafTo) {
-        const conflict = findLeafOverlap(apiBooks, from, to, editBookId)
+        const editingBook = apiBooks.find((b) => b.id === editBookId)
+        const conflict = findLeafOverlap(
+          apiBooks,
+          from,
+          to,
+          editBookId,
+          effectiveLeafYear(editingBook)
+        )
         if (conflict) {
           e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
         }
@@ -614,8 +642,7 @@ export default function BookManager({
 
   async function accountSingleLeaf(): Promise<boolean> {
     if (!canAccount) return false
-    const leafNum = Number.parseInt(accountLeafNo.trim(), 10)
-    const key = String(leafNum)
+    const key = accountLeafNo.trim()
     setBusy(true)
     setAccountActionError(null)
     try {
@@ -677,8 +704,9 @@ export default function BookManager({
       // Only update consumption rows — do not change book.leaf_no_from, or later
       // assignments would shrink the visible range and hide leaves assigned earlier.
 
+      const leafPrefix = apiBook.leaf_year !== null ? `${apiBook.leaf_year}-` : ""
       for (let L = fromL; L <= endL; L++) {
-        await upsertConsumptionAssignment(apiBook.id, String(L), {
+        await upsertConsumptionAssignment(apiBook.id, `${leafPrefix}${L}`, {
           user_id: empId,
           assigned_date: today,
           accounted: false,
@@ -749,10 +777,12 @@ export default function BookManager({
       const userIdForLeaves = emp?.id ?? null
 
       try {
+        const leafPrefix =
+          created.leaf_year !== null ? `${created.leaf_year}-` : ""
         for (let L = from; L <= to; L++) {
           await createConsumption({
             book_id: created.id,
-            leaf_no: String(L),
+            leaf_no: `${leafPrefix}${L}`,
             user_id: userIdForLeaves,
             assigned_date: today,
             accounted: false,
@@ -1514,7 +1544,7 @@ export default function BookManager({
                       <FieldContent>
                         <Input
                           id="account-leaf-no"
-                          inputMode="numeric"
+                          placeholder="e.g. 5 or 2026-5"
                           value={accountLeafNo}
                           onChange={(e) => setAccountLeafNo(e.target.value)}
                           aria-invalid={!!accountErrors.leafNo}

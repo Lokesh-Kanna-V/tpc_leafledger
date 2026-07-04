@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const result = await query(
-    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor FROM book ORDER BY id",
+    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor FROM book ORDER BY id",
   );
   return Response.json(result.rows);
 }
@@ -46,12 +46,20 @@ export async function POST(request) {
         : undefined;
   if (dateValue === undefined) return jsonError("initial_assigned_date must be a string or null");
 
+  // Admins re-enter plain sequential numbers each year; the current year is
+  // prefixed automatically, and leaf-range overlap is scoped to the same
+  // year so raw leaf numbers can restart at 1 without colliding with
+  // previous years' (or pre-existing, unscoped) ranges.
+  const year = new Date().getFullYear();
+  const bookNumber = `${year}-${book_number.trim()}`;
+
   const overlap = await query(
     `SELECT book_number, leaf_no_from, leaf_no_to FROM book
-     WHERE leaf_no_from IS NOT NULL AND leaf_no_to IS NOT NULL
-       AND leaf_no_from <= $1 AND leaf_no_to >= $2
+     WHERE leaf_year = $1
+       AND leaf_no_from IS NOT NULL AND leaf_no_to IS NOT NULL
+       AND leaf_no_from <= $2 AND leaf_no_to >= $3
      LIMIT 1`,
-    [leaf_no_to, leaf_no_from],
+    [year, leaf_no_to, leaf_no_from],
   );
   const conflict = overlap.rows[0];
   if (conflict) {
@@ -71,10 +79,10 @@ export async function POST(request) {
   try {
     const result = await query(
       `INSERT INTO book
-        (office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor)
-       VALUES ($1, $2, $3::date, $4, $5, $6::"BookStatus", $7)
-       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor`,
-      [office_id, book_number.trim(), dateValue, leaf_no_from, leaf_no_to, derivedStatus, inFloorValue],
+        (office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor)
+       VALUES ($1, $2, $3::date, $4, $5, $6, $7::"BookStatus", $8)
+       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor`,
+      [office_id, bookNumber, dateValue, leaf_no_from, leaf_no_to, year, derivedStatus, inFloorValue],
     );
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {

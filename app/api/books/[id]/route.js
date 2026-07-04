@@ -12,7 +12,7 @@ export async function GET(_req, { params }) {
   }
 
   const result = await query(
-    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor FROM book WHERE id = $1",
+    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor FROM book WHERE id = $1",
     [id],
   );
   const book = result.rows[0];
@@ -68,14 +68,32 @@ export async function PUT(request, { params }) {
         : undefined;
   if (dateValue === undefined) return jsonError("initial_assigned_date must be a string or null");
 
+  const existing = await query(
+    "SELECT leaf_no_from, leaf_year FROM book WHERE id = $1",
+    [id],
+  );
+  if (!existing.rows[0]) return jsonError("Book not found", 404);
+  const wasUnassigned = existing.rows[0].leaf_no_from === null;
+  const existingLeafYear = existing.rows[0].leaf_year;
+
+  // A book keeps the year its leaf range was first assigned in; only a
+  // first-time assignment (no leaf_no_from yet) picks up the current year.
+  // Pre-existing rows with a range but no leaf_year (legacy data) stay
+  // scoped to the untagged "legacy" pool rather than the current year.
+  const effectiveYear =
+    existingLeafYear ?? (wasUnassigned ? new Date().getFullYear() : null);
+  const nextLeafYear =
+    leaf_no_from !== null && leaf_no_to !== null ? effectiveYear : existingLeafYear;
+
   if (leaf_no_from !== null && leaf_no_to !== null) {
     const overlap = await query(
       `SELECT book_number, leaf_no_from, leaf_no_to FROM book
        WHERE id != $1
+         AND leaf_year IS NOT DISTINCT FROM $2
          AND leaf_no_from IS NOT NULL AND leaf_no_to IS NOT NULL
-         AND leaf_no_from <= $2 AND leaf_no_to >= $3
+         AND leaf_no_from <= $3 AND leaf_no_to >= $4
        LIMIT 1`,
-      [id, leaf_no_to, leaf_no_from],
+      [id, effectiveYear, leaf_no_to, leaf_no_from],
     );
     const conflict = overlap.rows[0];
     if (conflict) {
@@ -94,16 +112,18 @@ export async function PUT(request, { params }) {
            initial_assigned_date = $3::date,
            leaf_no_from = $4,
            leaf_no_to = $5,
-           book_status = $6::"BookStatus",
-           in_floor = $7
-       WHERE id = $8
-       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, book_status, in_floor`,
+           leaf_year = $6,
+           book_status = $7::"BookStatus",
+           in_floor = $8
+       WHERE id = $9
+       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor`,
       [
         office_id,
         book_number.trim(),
         dateValue,
         leaf_no_from,
         leaf_no_to,
+        nextLeafYear,
         book_status,
         in_floor,
         id,
