@@ -90,6 +90,7 @@ export default function Alerts() {
             <TableHead>Overdue leaves</TableHead>
             <TableHead>Oldest assigned</TableHead>
             <TableHead>Days passed</TableHead>
+            <TableHead>Allowed days</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -107,6 +108,7 @@ export default function Alerts() {
                   : "—"}
               </TableCell>
               <TableCell>{a.payload?.daysPassed ?? "—"}</TableCell>
+              <TableCell>{a.payload?.thresholdDays ?? "—"}</TableCell>
             </TableRow>
           ))}
         </TableBody>

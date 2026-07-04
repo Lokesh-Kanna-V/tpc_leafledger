@@ -2,7 +2,8 @@ import { prisma } from "@/lib/db"
 
 export const runtime = "nodejs"
 
-const OVERDUE_DAYS = 4
+/** Fallback threshold for books whose office was deleted/unassigned. */
+const DEFAULT_OVERDUE_DAYS = 2
 const HOUR_MS = 60 * 60 * 1000
 
 function isoDateOnly(d: Date) {
@@ -11,18 +12,17 @@ function isoDateOnly(d: Date) {
 
 async function refreshOverdueAccountingAlerts() {
   const today = new Date()
-  const threshold = new Date(today)
-  threshold.setDate(threshold.getDate() - OVERDUE_DAYS)
 
   const books = await prisma.book.findMany({
     where: {
       book_status: "current",
-      initial_assigned_date: { not: null, lte: threshold },
+      initial_assigned_date: { not: null },
       consumptions: { some: { accounted: false } },
     },
     select: {
       id: true,
       initial_assigned_date: true,
+      office: { select: { leaf_alert_days: true } },
       consumptions: {
         where: { accounted: false, user_id: { not: null } },
         select: { employee: { select: { name: true } } },
@@ -41,6 +41,7 @@ async function refreshOverdueAccountingAlerts() {
       overdueCount: number
       oldestAssignedDate: string
       daysPassed: number
+      thresholdDays: number
       assignedTo: string[]
     }
   >()
@@ -54,6 +55,10 @@ async function refreshOverdueAccountingAlerts() {
       Math.floor((today.getTime() - oldest.getTime()) / (24 * 60 * 60 * 1000)),
     )
 
+    const thresholdDays = b.office?.leaf_alert_days ?? DEFAULT_OVERDUE_DAYS
+
+    if (daysPassed < thresholdDays) continue
+
     const assignedTo = [
       ...new Set(
         (b.consumptions ?? [])
@@ -66,6 +71,7 @@ async function refreshOverdueAccountingAlerts() {
       overdueCount: b._count.consumptions,
       oldestAssignedDate: isoDateOnly(oldest),
       daysPassed,
+      thresholdDays,
       assignedTo,
     })
   }

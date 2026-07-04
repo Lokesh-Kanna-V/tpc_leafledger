@@ -39,14 +39,17 @@ export default function Offices({ offices, onReload }: OfficesProps) {
   const [error, setError] = useState<string | null>(null)
 
   const [newName, setNewName] = useState("")
+  const [newLeafAlertDays, setNewLeafAlertDays] = useState("2")
 
   const [editOpen, setEditOpen] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [editName, setEditName] = useState("")
+  const [editLeafAlertDays, setEditLeafAlertDays] = useState("2")
 
   function openEdit(o: Office) {
     setEditId(o.id)
     setEditName(o.name)
+    setEditLeafAlertDays(String(o.leaf_alert_days))
     setEditOpen(true)
     setError(null)
   }
@@ -57,11 +60,17 @@ export default function Offices({ offices, onReload }: OfficesProps) {
       setError("Name is required.")
       return
     }
+    const leafAlertDays = Number.parseInt(newLeafAlertDays, 10)
+    if (!Number.isInteger(leafAlertDays) || leafAlertDays < 1) {
+      setError("Leaf alert days must be a whole number of at least 1.")
+      return
+    }
     setBusy(true)
     setError(null)
     try {
-      await createOffice({ name })
+      await createOffice({ name, leaf_alert_days: leafAlertDays })
       setNewName("")
+      setNewLeafAlertDays("2")
       await onReload()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add office")
@@ -77,10 +86,15 @@ export default function Offices({ offices, onReload }: OfficesProps) {
       setError("Name is required.")
       return
     }
+    const leafAlertDays = Number.parseInt(editLeafAlertDays, 10)
+    if (!Number.isInteger(leafAlertDays) || leafAlertDays < 1) {
+      setError("Leaf alert days must be a whole number of at least 1.")
+      return
+    }
     setBusy(true)
     setError(null)
     try {
-      await updateOffice(editId, { name })
+      await updateOffice(editId, { name, leaf_alert_days: leafAlertDays })
       setEditOpen(false)
       await onReload()
     } catch (err) {
@@ -126,6 +140,20 @@ export default function Offices({ offices, onReload }: OfficesProps) {
               />
             </FieldContent>
           </Field>
+          <Field className="w-32">
+            <FieldLabel htmlFor="office-new-leaf-alert-days">
+              Leaf alert days
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                id="office-new-leaf-alert-days"
+                type="number"
+                min={1}
+                value={newLeafAlertDays}
+                onChange={(e) => setNewLeafAlertDays(e.target.value)}
+              />
+            </FieldContent>
+          </Field>
           <Button type="button" disabled={busy} onClick={() => void handleAdd()}>
             Add
           </Button>
@@ -137,13 +165,14 @@ export default function Offices({ offices, onReload }: OfficesProps) {
           <TableRow>
             <TableHead className="w-[100px]">ID</TableHead>
             <TableHead>Name</TableHead>
+            <TableHead className="w-35 text-center">Leaf alert days</TableHead>
             <TableHead className="w-[200px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {offices.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={3} className="text-muted-foreground">
+              <TableCell colSpan={4} className="text-muted-foreground">
                 No offices yet. Add one above.
               </TableCell>
             </TableRow>
@@ -152,6 +181,9 @@ export default function Offices({ offices, onReload }: OfficesProps) {
               <TableRow key={o.id}>
                 <TableCell className="font-medium tabular-nums">{o.id}</TableCell>
                 <TableCell>{o.name}</TableCell>
+                <TableCell className="text-center tabular-nums">
+                  {o.leaf_alert_days}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button
@@ -194,6 +226,20 @@ export default function Offices({ offices, onReload }: OfficesProps) {
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   autoComplete="off"
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="office-edit-leaf-alert-days">
+                Leaf alert days
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="office-edit-leaf-alert-days"
+                  type="number"
+                  min={1}
+                  value={editLeafAlertDays}
+                  onChange={(e) => setEditLeafAlertDays(e.target.value)}
                 />
               </FieldContent>
             </Field>

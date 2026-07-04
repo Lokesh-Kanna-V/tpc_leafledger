@@ -19,10 +19,11 @@ enum AlertType {
 }
 
 model Office {
-  id        Int              @id @default(autoincrement())
-  name      String           @unique
-  books     Book[]
-  employees EmployeeOffice[]
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
+  leaf_alert_days Int              @default(2)
+  books           Book[]
+  employees       EmployeeOffice[]
 
   @@map("offices")
 }

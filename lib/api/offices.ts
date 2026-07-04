@@ -3,6 +3,8 @@ import { parseResponse } from "@/lib/api/request"
 export type Office = {
   id: number
   name: string
+  /** Days a book assigned to this office may go unaccounted before it's flagged overdue. */
+  leaf_alert_days: number
 }
 
 /**
@@ -17,7 +19,10 @@ export async function getOffices(): Promise<Office[]> {
 /**
  * POST /api/offices
  */
-export async function createOffice(body: { name: string }): Promise<Office> {
+export async function createOffice(body: {
+  name: string
+  leaf_alert_days?: number
+}): Promise<Office> {
   const response = await fetch("/api/offices", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -39,7 +44,7 @@ export async function getOffice(id: number): Promise<Office> {
  */
 export async function updateOffice(
   id: number,
-  body: { name: string }
+  body: { name: string; leaf_alert_days: number }
 ): Promise<Office> {
   const response = await fetch(`/api/offices/${id}`, {
     method: "PUT",

@@ -12,6 +12,8 @@ export type AccountingOverdueAlert = {
     oldestAssignedDate: string
     /** Days passed since the book was assigned (based on `book.initial_assigned_date`). */
     daysPassed: number
+    /** Allowed days before this book's office flags it overdue (7 for pickup centers, 2 otherwise). */
+    thresholdDays: number
     /** Distinct employee names currently assigned on unaccounted leaves. */
     assignedTo: string[]
   }

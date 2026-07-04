@@ -3,9 +3,13 @@ import { humanizePgError, jsonError, pgCode } from "@/lib/http"
 
 export const runtime = "nodejs"
 
+const DEFAULT_LEAF_ALERT_DAYS = 2
+
 export async function GET() {
   console.log("GET /api/offices")
-  const result = await query("SELECT id, name FROM offices ORDER BY id")
+  const result = await query(
+    "SELECT id, name, leaf_alert_days FROM offices ORDER BY id"
+  )
   return Response.json(result.rows)
 }
 
@@ -17,14 +21,20 @@ export async function POST(request) {
     return jsonError("Invalid JSON body")
   }
 
-  const { name } = body ?? {}
+  const { name, leaf_alert_days } = body ?? {}
   if (typeof name !== "string" || !name.trim())
     return jsonError("name is required")
+  if (leaf_alert_days !== undefined && !Number.isInteger(leaf_alert_days))
+    return jsonError("leaf_alert_days must be a whole number")
+  const leafAlertDays =
+    leaf_alert_days !== undefined ? leaf_alert_days : DEFAULT_LEAF_ALERT_DAYS
+  if (leafAlertDays < 1)
+    return jsonError("leaf_alert_days must be at least 1")
 
   try {
     const result = await query(
-      "INSERT INTO offices (name) VALUES ($1) RETURNING id, name",
-      [name.trim()]
+      "INSERT INTO offices (name, leaf_alert_days) VALUES ($1, $2) RETURNING id, name, leaf_alert_days",
+      [name.trim(), leafAlertDays]
     )
     return Response.json(result.rows[0], { status: 201 })
   } catch (err) {

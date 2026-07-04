@@ -11,7 +11,10 @@ export async function GET(_req, { params }) {
     return jsonError("Invalid id");
   }
 
-  const result = await query("SELECT id, name FROM offices WHERE id = $1", [id]);
+  const result = await query(
+    "SELECT id, name, leaf_alert_days FROM offices WHERE id = $1",
+    [id],
+  );
   const office = result.rows[0];
   if (!office) return jsonError("Office not found", 404);
   return Response.json(office);
@@ -32,13 +35,15 @@ export async function PUT(request, { params }) {
     return jsonError("Invalid JSON body");
   }
 
-  const { name } = body ?? {};
+  const { name, leaf_alert_days } = body ?? {};
   if (typeof name !== "string" || !name.trim()) return jsonError("name is required");
+  if (!Number.isInteger(leaf_alert_days) || leaf_alert_days < 1)
+    return jsonError("leaf_alert_days must be a whole number of at least 1");
 
   try {
     const result = await query(
-      "UPDATE offices SET name = $1 WHERE id = $2 RETURNING id, name",
-      [name.trim(), id],
+      "UPDATE offices SET name = $1, leaf_alert_days = $2 WHERE id = $3 RETURNING id, name, leaf_alert_days",
+      [name.trim(), leaf_alert_days, id],
     );
     const office = result.rows[0];
     if (!office) return jsonError("Office not found", 404);
