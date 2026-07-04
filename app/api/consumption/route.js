@@ -73,6 +73,7 @@ export async function POST(request) {
       await query(
         `UPDATE book
          SET book_status = 'current'::"BookStatus",
+             in_floor = true,
              initial_assigned_date = COALESCE(initial_assigned_date, $1::date)
          WHERE id = $2`,
         [assigned_date.trim(), book_id],

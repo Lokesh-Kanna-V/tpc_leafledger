@@ -704,7 +704,8 @@ export default function BookManager({
       // Only update consumption rows — do not change book.leaf_no_from, or later
       // assignments would shrink the visible range and hide leaves assigned earlier.
 
-      const leafPrefix = apiBook.leaf_year !== null ? `${apiBook.leaf_year}-` : ""
+      const leafPrefix =
+        apiBook.leaf_year !== null ? `${apiBook.leaf_year}-` : ""
       for (let L = fromL; L <= endL; L++) {
         await upsertConsumptionAssignment(apiBook.id, `${leafPrefix}${L}`, {
           user_id: empId,
@@ -871,7 +872,7 @@ export default function BookManager({
     setBusy(true)
     setEditActionError(null)
     try {
-      await updateBook(editBookId, {
+      const savedBook = await updateBook(editBookId, {
         office_id: officeIdNum,
         book_number: editBookNo.trim(),
         initial_assigned_date: apiBook.initial_assigned_date,
@@ -901,9 +902,11 @@ export default function BookManager({
         const span = displayLeafSpanForBook(updatedBook)
         const minLeaf = minAssignableLeaf(updatedBook, consumptions)
         const today = dateIsoLocal()
+        const leafPrefix =
+          savedBook.leaf_year !== null ? `${savedBook.leaf_year}-` : ""
 
         for (let L = minLeaf; L <= span.to; L++) {
-          await upsertConsumptionAssignment(editBookId, String(L), {
+          await upsertConsumptionAssignment(editBookId, `${leafPrefix}${L}`, {
             user_id: empId,
             assigned_date: today,
             accounted: false,
@@ -1040,7 +1043,7 @@ export default function BookManager({
                       <Button
                         variant="outline"
                         size="icon"
-                        aria-label="Go Back"
+                        aria-label="Add Books"
                       >
                         <PlusIcon />
                       </Button>
