@@ -579,7 +579,7 @@ export default function BookManager({
     !editErrors.assignBlocked
 
   function bookTotalLeaves(b: BookRow) {
-    return b.leafTo - b.leafFrom + 1
+    return b.leafCount
   }
 
   function bookAccountedLeaves(b: BookRow) {
@@ -899,9 +899,11 @@ export default function BookManager({
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {detailBook.officeName ?? `Office #${detailBook.officeId}`} ·
-                  Leaves {detailBook.leafFrom}–{detailBook.leafTo} (
-                  {detailBook.leafTo - detailBook.leafFrom + 1}) · Status:{" "}
-                  {detailBook.bookStatus}
+                  Leaves{" "}
+                  {detailBook.hasLeafRange
+                    ? `${detailBook.leafFrom}–${detailBook.leafTo} (${detailBook.leafCount})`
+                    : `Not assigned (${detailBook.leafCount})`}{" "}
+                  · Status: {detailBook.bookStatus}
                 </p>
               </div>
             </div>
@@ -1918,10 +1920,18 @@ export default function BookManager({
                       {b.officeName ?? `Office #${b.officeId}`}
                     </TableCell>
                     <TableCell className="tabular-nums">
-                      {b.leafFrom} - {b.leafTo}{" "}
-                      <span className="text-muted-foreground">
-                        ({b.leafTo - b.leafFrom + 1})
-                      </span>
+                      {b.hasLeafRange ? (
+                        <>
+                          {b.leafFrom} - {b.leafTo}{" "}
+                          <span className="text-muted-foreground">
+                            ({b.leafCount})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Not assigned ({b.leafCount})
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>{b.assignedTo ?? "—"}</TableCell>
                     <TableCell className="tabular-nums">

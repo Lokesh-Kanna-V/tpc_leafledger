@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table"
 
 function isBookAccounted(b: BookRow) {
-  const totalBookLeaves = b.leafTo - b.leafFrom + 1
+  const totalBookLeaves = b.leafCount
   const accountedThrough = b.accountedThrough ?? b.leafFrom - 1
   const accountedBookLeaves =
     accountedThrough < b.leafFrom
@@ -58,13 +58,10 @@ export default function Dashboard({
 
     const total = books.length
 
-    const totalLeavesAllBooks = books.reduce(
-      (sum, b) => sum + (b.leafTo - b.leafFrom + 1),
-      0
-    )
+    const totalLeavesAllBooks = books.reduce((sum, b) => sum + b.leafCount, 0)
 
     const totalCurrentLeaves = currentBooks.reduce(
-      (sum, b) => sum + (b.leafTo - b.leafFrom + 1),
+      (sum, b) => sum + b.leafCount,
       0
     )
 
@@ -91,7 +88,7 @@ export default function Dashboard({
       : 0
 
     const storedBookLeaves = storeBooks.reduce(
-      (sum, b) => sum + (b.leafTo - b.leafFrom + 1),
+      (sum, b) => sum + b.leafCount,
       0
     )
 
@@ -102,7 +99,7 @@ export default function Dashboard({
         Record<string, { total: number; unaccounted: number; leaves: number }>
       >((acc, b) => {
         const key = (b.assignedTo ?? "Unassigned").trim() || "Unassigned"
-        const leaves = b.leafTo - b.leafFrom + 1
+        const leaves = b.leafCount
         acc[key] ??= { total: 0, unaccounted: 0, leaves: 0 }
         acc[key].total += 1
         acc[key].leaves += leaves

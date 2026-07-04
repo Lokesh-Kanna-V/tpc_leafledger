@@ -20,7 +20,14 @@ export type BookRow = {
   accountedThrough: number
   /** Leaves in [leafFrom, leafTo] with a consumption row marked accounted. */
   accountedLeafCount: number
+  /** Whether this book has a real leaf_no_from/leaf_no_to assigned (false for unassigned stock books). */
+  hasLeafRange: boolean
+  /** Total leaves in this book: leafTo - leafFrom + 1 when assigned, else the standard 50-leaf book size. */
+  leafCount: number
 }
+
+/** Every physical book has this many leaves before it's assigned a numbered range. */
+export const DEFAULT_BOOK_LEAF_COUNT = 50
 
 export type OfficeLite = { id: number; name: string }
 
@@ -113,6 +120,11 @@ export function rowsFromDatabase(
       accountedThrough = L
     }
 
+    const hasLeafRange = b.leaf_no_from !== null && b.leaf_no_to !== null
+    const leafCount = hasLeafRange
+      ? displayLeafTo - displayLeafFrom + 1
+      : DEFAULT_BOOK_LEAF_COUNT
+
     return {
       id: String(b.id),
       dbId: b.id,
@@ -127,6 +139,8 @@ export function rowsFromDatabase(
       assignedDate,
       accountedThrough,
       accountedLeafCount,
+      hasLeafRange,
+      leafCount,
     }
   })
 }
