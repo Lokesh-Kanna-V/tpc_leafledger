@@ -37,7 +37,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-import { ChevronLeft, EqualIcon, MinusIcon, PlusIcon } from "lucide-react"
+import {
+  ChevronLeft,
+  EqualIcon,
+  MinusIcon,
+  PlusIcon,
+  UsersIcon,
+} from "lucide-react"
 import {
   displayLeafSpanForBook,
   minAssignableLeaf,
@@ -181,9 +187,36 @@ export default function BookManager({
   const [editNewEmployeeName, setEditNewEmployeeName] = useState("")
   const [editNewEmployeeRole, setEditNewEmployeeRole] = useState("")
 
-  const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>("all")
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
+  const [bulkStep, setBulkStep] = useState<"form" | "leaf">("form")
+  const [bulkBookFrom, setBulkBookFrom] = useState("")
+  const [bulkBookTo, setBulkBookTo] = useState("")
+  const [bulkOfficeId, setBulkOfficeId] = useState("")
+  const [bulkEmployeeId, setBulkEmployeeId] = useState("")
+  const [bulkNewEmployeeName, setBulkNewEmployeeName] = useState("")
+  const [bulkNewEmployeeRole, setBulkNewEmployeeRole] = useState("")
+  const [bulkActionError, setBulkActionError] = useState<string | null>(null)
+  const [bulkResultMessage, setBulkResultMessage] = useState<string | null>(
+    null
+  )
+  /** Book ids resolved from the Book from/to range once the wizard starts. */
+  const [bulkBookIds, setBulkBookIds] = useState<number[]>([])
+  /** Subset of bulkBookIds still missing a leaf range, in the order they'll be asked for. */
+  const [bulkPendingLeafBookIds, setBulkPendingLeafBookIds] = useState<
+    number[]
+  >([])
+  const [bulkLeafTotal, setBulkLeafTotal] = useState(0)
+  const [bulkLeafFrom, setBulkLeafFrom] = useState("")
+  const [bulkLeafTo, setBulkLeafTo] = useState("")
+  /** Just-saved leaf ranges within the current wizard run, keyed by book id, so the
+   * final apply step sees fresh values even before onReload's props re-render. */
+  const bulkLeafRangeOverridesRef = useRef<Record<number, Book>>({})
+
+  const [statusFilter, setStatusFilter] = useState<"all" | BookStatus>(
+    "current"
+  )
   const [searchQuery, setSearchQuery] = useState("")
-  const [yearFilter, setYearFilter] = useState("all")
+  const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()))
   const [monthFilter, setMonthFilter] = useState("all")
   const [page, setPage] = useState(1)
 
@@ -359,6 +392,7 @@ export default function BookManager({
 
   const bookYearOptions = useMemo(() => {
     const years = new Set<string>()
+    years.add(String(new Date().getFullYear()))
     for (const b of books) {
       if (b.assignedDate) years.add(b.assignedDate.slice(0, 4))
     }
@@ -371,10 +405,14 @@ export default function BookManager({
       rows = rows.filter((b) => b.bookStatus === statusFilter)
     }
     if (yearFilter !== "all") {
-      rows = rows.filter((b) => b.assignedDate?.slice(0, 4) === yearFilter)
+      rows = rows.filter(
+        (b) => !b.assignedDate || b.assignedDate.slice(0, 4) === yearFilter
+      )
     }
     if (monthFilter !== "all") {
-      rows = rows.filter((b) => b.assignedDate?.slice(5, 7) === monthFilter)
+      rows = rows.filter(
+        (b) => !b.assignedDate || b.assignedDate.slice(5, 7) === monthFilter
+      )
     }
     const q = searchQuery.trim().toLowerCase()
     if (q) {
@@ -605,6 +643,124 @@ export default function BookManager({
     !editErrors.newEmployeeName &&
     !editErrors.newEmployeeRole &&
     !editErrors.assignBlocked
+
+  const bulkFormErrors = useMemo(() => {
+    const e: {
+      bookFrom?: string
+      bookTo?: string
+      office?: string
+      employee?: string
+      newEmployeeName?: string
+      newEmployeeRole?: string
+    } = {}
+
+    const from = Number.parseInt(bulkBookFrom, 10)
+    const to = Number.parseInt(bulkBookTo, 10)
+
+    if (!bulkBookFrom.trim()) e.bookFrom = "Book from is required."
+    else if (!Number.isInteger(from))
+      e.bookFrom = "Book from must be a whole number."
+
+    if (!bulkBookTo.trim()) e.bookTo = "Book to is required."
+    else if (!Number.isInteger(to)) e.bookTo = "Book to must be a whole number."
+
+    if (!e.bookFrom && !e.bookTo && to < from) {
+      e.bookTo = "Book to must be greater than or equal to book from."
+    }
+
+    if (offices.length === 0) {
+      e.office = "No offices available."
+    } else if (!bulkOfficeId) {
+      e.office = "Office is required."
+    }
+
+    if (bulkEmployeeId === "__new__") {
+      if (!bulkNewEmployeeName.trim()) e.newEmployeeName = "Name is required."
+      if (!bulkNewEmployeeRole.trim()) e.newEmployeeRole = "Role is required."
+    }
+
+    return e
+  }, [
+    bulkBookFrom,
+    bulkBookTo,
+    bulkOfficeId,
+    offices,
+    bulkEmployeeId,
+    bulkNewEmployeeName,
+    bulkNewEmployeeRole,
+  ])
+
+  const canStartBulk =
+    !bulkFormErrors.bookFrom &&
+    !bulkFormErrors.bookTo &&
+    !bulkFormErrors.office &&
+    !bulkFormErrors.employee &&
+    !bulkFormErrors.newEmployeeName &&
+    !bulkFormErrors.newEmployeeRole
+
+  const bulkCurrentLeafBookId = bulkPendingLeafBookIds[0] ?? null
+  const bulkCurrentLeafBook =
+    bulkCurrentLeafBookId !== null
+      ? apiBooks.find((b) => b.id === bulkCurrentLeafBookId)
+      : undefined
+
+  const bulkLeafMetrics = useMemo(() => {
+    const from = Number.parseInt(bulkLeafFrom, 10)
+    const to = Number.parseInt(bulkLeafTo, 10)
+    const fromValid = Number.isFinite(from)
+    const toValid = Number.isFinite(to)
+    if (!fromValid || !toValid) {
+      return {
+        from: fromValid ? from : null,
+        to: toValid ? to : null,
+        count: 0,
+      }
+    }
+    return { from, to, count: to - from + 1 }
+  }, [bulkLeafFrom, bulkLeafTo])
+
+  const bulkLeafErrors = useMemo(() => {
+    const e: { leafFrom?: string; leafTo?: string } = {}
+
+    if (!bulkLeafFrom.trim()) e.leafFrom = "Leaf from is required."
+    if (!bulkLeafTo.trim()) e.leafTo = "Leaf to is required."
+
+    const { from, to, count } = bulkLeafMetrics
+    if (bulkLeafFrom.trim() && from === null)
+      e.leafFrom = "Leaf from must be a number."
+    if (bulkLeafTo.trim() && to === null) e.leafTo = "Leaf to must be a number."
+
+    if (from !== null && to !== null) {
+      if (to < from)
+        e.leafTo = "Leaf to must be greater than or equal to leaf from."
+      if (count <= 0) e.leafTo = "Leaf range must be at least 1."
+      if (count > 50) e.leafTo = "Leaf count cannot exceed 50."
+
+      if (!e.leafTo && bulkCurrentLeafBookId !== null) {
+        const conflict = findLeafOverlap(
+          apiBooks,
+          from,
+          to,
+          bulkCurrentLeafBookId,
+          new Date().getFullYear()
+        )
+        if (conflict) {
+          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
+        }
+      }
+    }
+
+    return e
+  }, [
+    bulkLeafFrom,
+    bulkLeafTo,
+    bulkLeafMetrics,
+    apiBooks,
+    bulkCurrentLeafBookId,
+  ])
+
+  const canSaveBulkLeafRange =
+    !bulkLeafErrors.leafFrom && !bulkLeafErrors.leafTo
 
   function bookTotalLeaves(b: BookRow) {
     return b.leafCount
@@ -922,6 +1078,177 @@ export default function BookManager({
         err instanceof Error ? err.message : "Failed to update book"
       )
       return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function resetBulkForm() {
+    setBulkStep("form")
+    setBulkBookFrom("")
+    setBulkBookTo("")
+    setBulkOfficeId("")
+    setBulkEmployeeId("")
+    setBulkNewEmployeeName("")
+    setBulkNewEmployeeRole("")
+    setBulkActionError(null)
+    setBulkResultMessage(null)
+    setBulkBookIds([])
+    setBulkPendingLeafBookIds([])
+    setBulkLeafTotal(0)
+    setBulkLeafFrom("")
+    setBulkLeafTo("")
+    bulkLeafRangeOverridesRef.current = {}
+  }
+
+  async function startBulkAssign() {
+    if (!canStartBulk) return
+
+    const from = Number.parseInt(bulkBookFrom, 10)
+    const to = Number.parseInt(bulkBookTo, 10)
+    const year = new Date().getFullYear()
+
+    const matched: number[] = []
+    for (let n = from; n <= to; n++) {
+      const book = apiBooks.find((b) => b.book_number === `${year}-${n}`)
+      if (book) matched.push(book.id)
+    }
+
+    if (matched.length === 0) {
+      setBulkActionError(
+        `No books found numbered ${year}-${from} through ${year}-${to}.`
+      )
+      return
+    }
+
+    const pending = matched.filter((id) => {
+      const b = apiBooks.find((bk) => bk.id === id)
+      return b?.leaf_no_from === null
+    })
+
+    setBulkActionError(null)
+    setBulkResultMessage(null)
+    setBulkBookIds(matched)
+    setBulkPendingLeafBookIds(pending)
+    setBulkLeafTotal(pending.length)
+    setBulkLeafFrom("")
+    setBulkLeafTo("")
+
+    if (pending.length > 0) {
+      setBulkStep("leaf")
+    } else {
+      await finishBulkAssign(matched)
+    }
+  }
+
+  async function saveBulkLeafRangeForCurrentBook(): Promise<boolean> {
+    if (
+      !canSaveBulkLeafRange ||
+      bulkCurrentLeafBookId === null ||
+      !bulkCurrentLeafBook
+    )
+      return false
+    const from = bulkLeafMetrics.from
+    const to = bulkLeafMetrics.to
+    if (from === null || to === null) return false
+
+    setBusy(true)
+    setBulkActionError(null)
+    try {
+      const updated = await updateBook(bulkCurrentLeafBookId, {
+        ...bookToUpdateBody(bulkCurrentLeafBook),
+        leaf_no_from: from,
+        leaf_no_to: to,
+      })
+      const overrides = {
+        ...bulkLeafRangeOverridesRef.current,
+        [updated.id]: updated,
+      }
+      bulkLeafRangeOverridesRef.current = overrides
+      await onReload()
+
+      const remaining = bulkPendingLeafBookIds.slice(1)
+      setBulkPendingLeafBookIds(remaining)
+      setBulkLeafFrom("")
+      setBulkLeafTo("")
+
+      if (remaining.length === 0) {
+        await finishBulkAssign(bulkBookIds, overrides)
+      }
+      return true
+    } catch (err) {
+      setBulkActionError(
+        err instanceof Error ? err.message : "Failed to save leaf range"
+      )
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function finishBulkAssign(
+    bookIds: number[],
+    overrides: Record<number, Book> = {}
+  ) {
+    setBusy(true)
+    setBulkActionError(null)
+    try {
+      let empId: number | null = null
+      if (bulkEmployeeId === "__new__") {
+        const created = await createEmployee({
+          name: bulkNewEmployeeName.trim(),
+          role: bulkNewEmployeeRole.trim(),
+        })
+        empId = created.id
+      } else if (bulkEmployeeId) {
+        empId = Number.parseInt(bulkEmployeeId, 10)
+      }
+
+      const officeIdNum = Number.parseInt(bulkOfficeId, 10)
+      const today = dateIsoLocal()
+      let leavesAssigned = 0
+
+      for (const bookId of bookIds) {
+        const apiBook =
+          overrides[bookId] ?? apiBooks.find((b) => b.id === bookId)
+        if (!apiBook) continue
+
+        const savedBook = await updateBook(bookId, {
+          ...bookToUpdateBody(apiBook),
+          office_id: officeIdNum,
+        })
+
+        if (empId !== null) {
+          const span = displayLeafSpanForBook(savedBook)
+          const minLeaf = minAssignableLeaf(savedBook, consumptions)
+          const leafPrefix =
+            savedBook.leaf_year !== null ? `${savedBook.leaf_year}-` : ""
+
+          for (let L = minLeaf; L <= span.to; L++) {
+            await upsertConsumptionAssignment(bookId, `${leafPrefix}${L}`, {
+              user_id: empId,
+              assigned_date: today,
+              accounted: false,
+              accounted_date: null,
+            })
+            leavesAssigned += 1
+          }
+        }
+      }
+
+      await onReload()
+      bulkLeafRangeOverridesRef.current = {}
+      setBulkResultMessage(
+        `${bookIds.length} book${bookIds.length === 1 ? "" : "s"} assigned to the selected office` +
+          (empId !== null ? `, ${leavesAssigned} leaves assigned.` : ".")
+      )
+      setBulkStep("form")
+      setBulkBookIds([])
+      setBulkPendingLeafBookIds([])
+    } catch (err) {
+      setBulkActionError(
+        err instanceof Error ? err.message : "Bulk assignment failed"
+      )
     } finally {
       setBusy(false)
     }
@@ -1612,6 +1939,362 @@ export default function BookManager({
                 </DialogContent>
               </Dialog>
 
+              <Dialog
+                open={bulkDialogOpen}
+                onOpenChange={(open) => {
+                  setBulkDialogOpen(open)
+                  if (open) resetBulkForm()
+                }}
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Bulk Assign Books"
+                      >
+                        <UsersIcon />
+                      </Button>
+                    </DialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Bulk Assign Books</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <DialogContent className="sm:max-w-md">
+                  {bulkStep === "form" ? (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle>Bulk assign books</DialogTitle>
+                        <DialogDescription>
+                          Assign an office (and optionally an employee) to every
+                          book numbered in this range for{" "}
+                          {new Date().getFullYear()}. Books without a leaf range
+                          yet will ask for one first.
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      {bulkActionError ? (
+                        <p
+                          className="rounded-xl bg-red-900 text-sm text-destructive text-gray-100"
+                          role="alert"
+                        >
+                          {bulkActionError}
+                        </p>
+                      ) : null}
+                      {bulkResultMessage ? (
+                        <p
+                          className="rounded-xl bg-green-800 p-2 text-sm text-gray-100"
+                          role="status"
+                        >
+                          {bulkResultMessage}
+                        </p>
+                      ) : null}
+
+                      <FieldGroup>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field data-invalid={!!bulkFormErrors.bookFrom}>
+                            <FieldLabel htmlFor="bulk-book-from">
+                              Book from
+                            </FieldLabel>
+                            <FieldContent>
+                              <Input
+                                id="bulk-book-from"
+                                inputMode="numeric"
+                                value={bulkBookFrom}
+                                onChange={(e) =>
+                                  setBulkBookFrom(e.target.value)
+                                }
+                                placeholder="1"
+                                aria-invalid={!!bulkFormErrors.bookFrom}
+                              />
+                              <FieldError
+                                errors={
+                                  bulkFormErrors.bookFrom
+                                    ? [{ message: bulkFormErrors.bookFrom }]
+                                    : []
+                                }
+                              />
+                            </FieldContent>
+                          </Field>
+                          <Field data-invalid={!!bulkFormErrors.bookTo}>
+                            <FieldLabel htmlFor="bulk-book-to">
+                              Book to
+                            </FieldLabel>
+                            <FieldContent>
+                              <Input
+                                id="bulk-book-to"
+                                inputMode="numeric"
+                                value={bulkBookTo}
+                                onChange={(e) => setBulkBookTo(e.target.value)}
+                                placeholder="50"
+                                aria-invalid={!!bulkFormErrors.bookTo}
+                              />
+                              <FieldError
+                                errors={
+                                  bulkFormErrors.bookTo
+                                    ? [{ message: bulkFormErrors.bookTo }]
+                                    : []
+                                }
+                              />
+                            </FieldContent>
+                          </Field>
+                        </div>
+
+                        <Field data-invalid={!!bulkFormErrors.office}>
+                          <FieldLabel htmlFor="bulk-office">Office</FieldLabel>
+                          <FieldContent>
+                            <select
+                              id="bulk-office"
+                              className={cn(
+                                "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                              )}
+                              value={bulkOfficeId}
+                              onChange={(e) => setBulkOfficeId(e.target.value)}
+                              aria-invalid={!!bulkFormErrors.office}
+                            >
+                              <option value="">Select an office</option>
+                              {offices.map((o) => (
+                                <option key={o.id} value={String(o.id)}>
+                                  {o.name}
+                                </option>
+                              ))}
+                            </select>
+                            <FieldError
+                              errors={
+                                bulkFormErrors.office
+                                  ? [{ message: bulkFormErrors.office }]
+                                  : []
+                              }
+                            />
+                          </FieldContent>
+                        </Field>
+
+                        <Field data-invalid={!!bulkFormErrors.employee}>
+                          <FieldLabel htmlFor="bulk-employee">
+                            Assign to{" "}
+                            <span className="text-muted-foreground">
+                              (optional)
+                            </span>
+                          </FieldLabel>
+                          <FieldContent>
+                            <select
+                              id="bulk-employee"
+                              className={cn(
+                                "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                              )}
+                              value={bulkEmployeeId}
+                              onChange={(e) =>
+                                setBulkEmployeeId(e.target.value)
+                              }
+                              aria-invalid={!!bulkFormErrors.employee}
+                            >
+                              <option value="">No change</option>
+                              {employeesSortedForAssign.map((emp) => (
+                                <option key={emp.id} value={String(emp.id)}>
+                                  {emp.name} ({emp.role})
+                                </option>
+                              ))}
+                              <option value="__new__">
+                                + Add new employee…
+                              </option>
+                            </select>
+                            <FieldError
+                              errors={
+                                bulkFormErrors.employee
+                                  ? [{ message: bulkFormErrors.employee }]
+                                  : []
+                              }
+                            />
+                          </FieldContent>
+                        </Field>
+
+                        {bulkEmployeeId === "__new__" ? (
+                          <>
+                            <Field
+                              data-invalid={!!bulkFormErrors.newEmployeeName}
+                            >
+                              <FieldLabel htmlFor="bulk-new-emp-name">
+                                New employee name
+                              </FieldLabel>
+                              <FieldContent>
+                                <Input
+                                  id="bulk-new-emp-name"
+                                  value={bulkNewEmployeeName}
+                                  onChange={(e) =>
+                                    setBulkNewEmployeeName(e.target.value)
+                                  }
+                                  placeholder="Full name"
+                                  autoComplete="off"
+                                  aria-invalid={
+                                    !!bulkFormErrors.newEmployeeName
+                                  }
+                                />
+                                <FieldError
+                                  errors={
+                                    bulkFormErrors.newEmployeeName
+                                      ? [
+                                          {
+                                            message:
+                                              bulkFormErrors.newEmployeeName,
+                                          },
+                                        ]
+                                      : []
+                                  }
+                                />
+                              </FieldContent>
+                            </Field>
+                            <Field
+                              data-invalid={!!bulkFormErrors.newEmployeeRole}
+                            >
+                              <FieldLabel htmlFor="bulk-new-emp-role">
+                                Role
+                              </FieldLabel>
+                              <FieldContent>
+                                <Input
+                                  id="bulk-new-emp-role"
+                                  value={bulkNewEmployeeRole}
+                                  onChange={(e) =>
+                                    setBulkNewEmployeeRole(e.target.value)
+                                  }
+                                  autoComplete="off"
+                                  aria-invalid={
+                                    !!bulkFormErrors.newEmployeeRole
+                                  }
+                                />
+                                <FieldDescription>
+                                  They will be saved to Employees and assigned
+                                  to these books.
+                                </FieldDescription>
+                                <FieldError
+                                  errors={
+                                    bulkFormErrors.newEmployeeRole
+                                      ? [
+                                          {
+                                            message:
+                                              bulkFormErrors.newEmployeeRole,
+                                          },
+                                        ]
+                                      : []
+                                  }
+                                />
+                              </FieldContent>
+                            </Field>
+                          </>
+                        ) : null}
+                      </FieldGroup>
+
+                      <DialogFooter className="sm:justify-between">
+                        <DialogClose asChild>
+                          <Button variant="outline" type="button">
+                            Close
+                          </Button>
+                        </DialogClose>
+                        <Button
+                          type="button"
+                          disabled={!canStartBulk || busy}
+                          onClick={() => void startBulkAssign()}
+                        >
+                          Next
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  ) : (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle>
+                          Set leaf range for{" "}
+                          <strong>
+                            {" "}
+                            Book {bulkCurrentLeafBook?.book_number ?? ""}
+                          </strong>
+                        </DialogTitle>
+                        <DialogDescription>
+                          Book {bulkCurrentLeafBook?.book_number ?? ""} doesn
+                          &rsquo;t have a leaf range yet. Enter one to continue
+                          ({bulkLeafTotal - bulkPendingLeafBookIds.length + 1}{" "}
+                          of {bulkLeafTotal}).
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      {bulkActionError ? (
+                        <p className="text-sm text-destructive" role="alert">
+                          {bulkActionError}
+                        </p>
+                      ) : null}
+
+                      <FieldGroup>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field data-invalid={!!bulkLeafErrors.leafFrom}>
+                            <FieldLabel htmlFor="bulk-leaf-from">
+                              Leaf from
+                            </FieldLabel>
+                            <FieldContent>
+                              <Input
+                                id="bulk-leaf-from"
+                                inputMode="numeric"
+                                value={bulkLeafFrom}
+                                onChange={(e) =>
+                                  setBulkLeafFrom(e.target.value)
+                                }
+                                placeholder="1"
+                                aria-invalid={!!bulkLeafErrors.leafFrom}
+                              />
+                              <FieldError
+                                errors={
+                                  bulkLeafErrors.leafFrom
+                                    ? [{ message: bulkLeafErrors.leafFrom }]
+                                    : []
+                                }
+                              />
+                            </FieldContent>
+                          </Field>
+                          <Field data-invalid={!!bulkLeafErrors.leafTo}>
+                            <FieldLabel htmlFor="bulk-leaf-to">
+                              Leaf to
+                            </FieldLabel>
+                            <FieldContent>
+                              <Input
+                                id="bulk-leaf-to"
+                                inputMode="numeric"
+                                value={bulkLeafTo}
+                                onChange={(e) => setBulkLeafTo(e.target.value)}
+                                placeholder="50"
+                                aria-invalid={!!bulkLeafErrors.leafTo}
+                              />
+                              <FieldError
+                                errors={
+                                  bulkLeafErrors.leafTo
+                                    ? [{ message: bulkLeafErrors.leafTo }]
+                                    : []
+                                }
+                              />
+                            </FieldContent>
+                          </Field>
+                        </div>
+                      </FieldGroup>
+
+                      <DialogFooter className="sm:justify-between">
+                        <DialogClose asChild>
+                          <Button variant="outline" type="button">
+                            Close
+                          </Button>
+                        </DialogClose>
+                        <Button
+                          type="button"
+                          disabled={!canSaveBulkLeafRange || busy}
+                          onClick={() => void saveBulkLeafRangeForCurrentBook()}
+                        >
+                          Next
+                        </Button>
+                      </DialogFooter>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
+
               <ButtonGroup>
                 <Field orientation="horizontal">
                   <Input
@@ -1670,6 +2353,16 @@ export default function BookManager({
             </Button>
 
             <ButtonGroup>
+              <Button
+                variant={statusFilter === "all" ? "default" : "outline"}
+                type="button"
+                onClick={() => {
+                  setStatusFilter("all")
+                  setPage(1)
+                }}
+              >
+                All
+              </Button>
               <Button
                 variant={statusFilter === "current" ? "default" : "outline"}
                 type="button"

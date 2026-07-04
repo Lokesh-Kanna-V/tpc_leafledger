@@ -72,11 +72,12 @@ export default function StockManager({
   const [editId, setEditId] = useState<number | null>(null)
   const [editLotNumber, setEditLotNumber] = useState("")
 
-  const [yearFilter, setYearFilter] = useState("all")
+  const [yearFilter, setYearFilter] = useState(String(new Date().getFullYear()))
   const [monthFilter, setMonthFilter] = useState("all")
 
   const lotYearOptions = useMemo(() => {
     const years = new Set<string>()
+    years.add(String(new Date().getFullYear()))
     for (const lot of lots) years.add(lot.created_at.slice(0, 4))
     return [...years].sort((a, b) => b.localeCompare(a))
   }, [lots])
