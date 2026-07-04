@@ -53,7 +53,7 @@ export default function Dashboard({
       (b) => String(b.bookStatus ?? "").toLowerCase() === "current"
     )
     const storeBooks = books.filter(
-      (b) => String(b.bookStatus ?? "").toLowerCase() === "store"
+      (b) => String(b.bookStatus ?? "").toLowerCase() === "store" && !b.inFloor
     )
 
     const total = books.length
