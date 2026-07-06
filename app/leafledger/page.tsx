@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
+import Image from "next/image"
 import {
   LayoutDashboard,
   ChevronLeft,
@@ -262,6 +263,18 @@ export default function Home() {
               <LogOut className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
           </button>
+          {!collapsed && (
+            <div className="mt-2 flex items-center justify-center gap-1 text-muted-foreground">
+              <Image
+                src="/logo_lightmode.png"
+                alt="Gamma Grid"
+                width={12}
+                height={12}
+                className="h-3 w-3 object-contain"
+              />
+              <p className="truncate text-[11px]">Powered by Gamma Grid</p>
+            </div>
+          )}
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col p-3">
