@@ -44,7 +44,8 @@ const mainNav = (alertCount: number): NavItem[] => [
   { label: "Dashboard", icon: LayoutDashboard, id: 0 },
   { label: "Book Manager", icon: BookOpenIcon, id: 1 },
   { label: "Stock Manager", icon: BoxesIcon, id: 2 },
-  { label: "Organization", icon: Building2Icon, id: 3 },
+  // { label: "Organization", icon: Building2Icon, id: 3 },
+  { label: "Master", icon: Building2Icon, id: 3 },
   { label: "Alerts", icon: BellIcon, id: 4, badge: alertCount || undefined },
 ]
 
@@ -243,7 +244,7 @@ export default function Home() {
             disabled={logoutBusy}
             className={cn(
               "flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50",
-              collapsed && "justify-center",
+              collapsed && "justify-center"
             )}
           >
             <div className="flex h-7 w-7 min-w-7 items-center justify-center rounded-full bg-green-100 text-xs font-medium text-green-700">
@@ -331,11 +332,11 @@ export default function Home() {
                   <StockManager lots={lots} onReload={reloadData} />
                 )}
               </>
-            ) : active === "Organization" ? (
+            ) : active === "Master" ? (
               <>
                 <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
                   <Building2Icon />
-                  <h1 className="text-xl font-bold">ORGANIZATION</h1>
+                  <h1 className="text-xl font-bold">MASTER</h1>
                 </div>
                 {dataLoading ? (
                   <p className="mt-6 text-sm text-muted-foreground">
