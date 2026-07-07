@@ -21,7 +21,7 @@ services:
     # build:
     #   context: .
     #   dockerfile: Dockerfile
-    image: leafledger-app
+    image: leaf_ledger:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
