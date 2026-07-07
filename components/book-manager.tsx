@@ -1834,7 +1834,7 @@ export default function BookManager({
                   if (open) setAccountActionError(null)
                 }}
               >
-                {/* <Tooltip>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <DialogTrigger asChild>
                       <Button
@@ -1849,7 +1849,7 @@ export default function BookManager({
                   <TooltipContent>
                     <p>Account leaf</p>
                   </TooltipContent>
-                </Tooltip> */}
+                </Tooltip>
 
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>

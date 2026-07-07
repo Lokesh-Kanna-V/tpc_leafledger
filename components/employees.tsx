@@ -171,6 +171,7 @@ export default function Employees({
                 id="emp-new-role"
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
+                // default="-"
                 placeholder="e.g. Clerk"
                 autoComplete="off"
               />
