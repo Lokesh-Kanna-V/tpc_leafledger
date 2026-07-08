@@ -1,7 +1,7 @@
 import Image from "next/image"
 import { LeafIcon } from "lucide-react"
 
-import { LoginForm } from "@/components/login-form"
+import { LoginForm } from "@/features/auth"
 
 export default function Page() {
   return (
