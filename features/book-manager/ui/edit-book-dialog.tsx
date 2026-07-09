@@ -141,7 +141,7 @@ export function EditBookDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <Field data-invalid={!!errors.leafFrom}>
-              <FieldLabel htmlFor="edit-leaf-from">Leaf from</FieldLabel>
+              <FieldLabel htmlFor="edit-leaf-from">Consignment no. from</FieldLabel>
               <FieldContent>
                 <Input
                   id="edit-leaf-from"
@@ -160,7 +160,7 @@ export function EditBookDialog({
             </Field>
 
             <Field data-invalid={!!errors.leafTo}>
-              <FieldLabel htmlFor="edit-leaf-to">Leaf to</FieldLabel>
+              <FieldLabel htmlFor="edit-leaf-to">Consignment no. to</FieldLabel>
               <FieldContent>
                 <Input
                   id="edit-leaf-to"

@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const result = await query(
-    "SELECT id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor FROM book ORDER BY id",
+    "SELECT id, office_id, book_number, initial_assigned_date, consignment_no_from, consignment_no_to, leaf_year, book_status, in_floor FROM book ORDER BY id",
   );
   return Response.json(result.rows);
 }
@@ -22,8 +22,8 @@ export async function POST(request) {
     office_id,
     book_number,
     initial_assigned_date,
-    leaf_no_from,
-    leaf_no_to,
+    consignment_no_from,
+    consignment_no_to,
     book_status,
     in_floor,
   } = body ?? {};
@@ -31,8 +31,8 @@ export async function POST(request) {
   if (!Number.isInteger(office_id)) return jsonError("office_id is required");
   if (typeof book_number !== "string" || !book_number.trim())
     return jsonError("book_number is required");
-  if (!Number.isInteger(leaf_no_from)) return jsonError("leaf_no_from is required");
-  if (!Number.isInteger(leaf_no_to)) return jsonError("leaf_no_to is required");
+  if (!Number.isInteger(consignment_no_from)) return jsonError("consignment_no_from is required");
+  if (!Number.isInteger(consignment_no_to)) return jsonError("consignment_no_to is required");
   if (book_status !== "current" && book_status !== "completed" && book_status !== "store") {
     return jsonError("book_status must be one of: current, completed, store");
   }
@@ -54,17 +54,17 @@ export async function POST(request) {
   const bookNumber = `${year}-${book_number.trim()}`;
 
   const overlap = await query(
-    `SELECT book_number, leaf_no_from, leaf_no_to FROM book
+    `SELECT book_number, consignment_no_from, consignment_no_to FROM book
      WHERE leaf_year = $1
-       AND leaf_no_from IS NOT NULL AND leaf_no_to IS NOT NULL
-       AND leaf_no_from <= $2 AND leaf_no_to >= $3
+       AND consignment_no_from IS NOT NULL AND consignment_no_to IS NOT NULL
+       AND consignment_no_from <= $2 AND consignment_no_to >= $3
      LIMIT 1`,
-    [year, leaf_no_to, leaf_no_from],
+    [year, consignment_no_to, consignment_no_from],
   );
   const conflict = overlap.rows[0];
   if (conflict) {
     return jsonError(
-      `Leaves ${leaf_no_from}-${leaf_no_to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`,
+      `Leaves ${consignment_no_from}-${consignment_no_to} overlap with book ${conflict.book_number} (leaves ${conflict.consignment_no_from}-${conflict.consignment_no_to}). Choose a range starting after ${conflict.consignment_no_to}.`,
       409,
     );
   }
@@ -79,10 +79,10 @@ export async function POST(request) {
   try {
     const result = await query(
       `INSERT INTO book
-        (office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor)
+        (office_id, book_number, initial_assigned_date, consignment_no_from, consignment_no_to, leaf_year, book_status, in_floor)
        VALUES ($1, $2, $3::date, $4, $5, $6, $7::"BookStatus", $8)
-       RETURNING id, office_id, book_number, initial_assigned_date, leaf_no_from, leaf_no_to, leaf_year, book_status, in_floor`,
-      [office_id, bookNumber, dateValue, leaf_no_from, leaf_no_to, year, derivedStatus, inFloorValue],
+       RETURNING id, office_id, book_number, initial_assigned_date, consignment_no_from, consignment_no_to, leaf_year, book_status, in_floor`,
+      [office_id, bookNumber, dateValue, consignment_no_from, consignment_no_to, year, derivedStatus, inFloorValue],
     );
     return Response.json(result.rows[0], { status: 201 });
   } catch (err) {

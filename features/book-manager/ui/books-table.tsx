@@ -46,7 +46,7 @@ export function BooksTable({
           <TableRow>
             <TableHead>Book Serial No.</TableHead>
             <TableHead>Office</TableHead>
-            <TableHead>Leaf No.</TableHead>
+            <TableHead>Consignment No.</TableHead>
             <TableHead>Assigned To</TableHead>
             <TableHead>Assigned Date</TableHead>
             <TableHead className="w-[100px] text-center">In Floor</TableHead>

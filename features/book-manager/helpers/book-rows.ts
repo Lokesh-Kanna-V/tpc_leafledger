@@ -7,8 +7,8 @@ import type { BookRow, OfficeLite } from "../types"
 export const DEFAULT_BOOK_LEAF_COUNT = 50
 
 /** Strips an optional "YYYY-" year prefix (e.g. "2026-5" -> "5") before parsing. */
-export function parseLeafNo(leafNo: string): number | null {
-  const trimmed = String(leafNo).trim()
+export function parseConsignmentNo(consignmentNo: string): number | null {
+  const trimmed = String(consignmentNo).trim()
   const withoutYear = trimmed.replace(/^\d{4}-/, "")
   const n = Number.parseInt(withoutYear, 10)
   return Number.isFinite(n) ? n : null
@@ -23,7 +23,7 @@ function consumptionBookId(bookId: Consumption["book_id"]): number | null {
 
 export function displayLeafSpanForBook(b: Book): { from: number; to: number } {
   // Stock books may have no leaf range yet; treat as an empty span.
-  return { from: b.leaf_no_from ?? 0, to: b.leaf_no_to ?? 0 }
+  return { from: b.consignment_no_from ?? 0, to: b.consignment_no_to ?? 0 }
 }
 
 /**
@@ -41,7 +41,7 @@ export function minAssignableLeaf(
   for (const c of consumptions) {
     if (consumptionBookId(c.book_id) !== bid) continue
     if (!c.accounted) continue
-    const n = parseLeafNo(String(c.leaf_no))
+    const n = parseConsignmentNo(String(c.consignment_no))
     if (n === null || n < span.from || n > span.to) continue
     maxAccounted = maxAccounted === null ? n : Math.max(maxAccounted, n)
   }
@@ -65,7 +65,7 @@ export function rowsFromDatabase(
 
     const leavesInBook = consumptions.filter((c) => {
       if (consumptionBookId(c.book_id) !== b.id) return false
-      const n = parseLeafNo(c.leaf_no)
+      const n = parseConsignmentNo(c.consignment_no)
       return n !== null && n >= displayLeafFrom && n <= displayLeafTo
     })
 
@@ -90,13 +90,13 @@ export function rowsFromDatabase(
     let accountedThrough = displayLeafFrom - 1
     let accountedLeafCount = 0
     for (let L = displayLeafFrom; L <= displayLeafTo; L++) {
-      const row = leavesInBook.find((c) => parseLeafNo(c.leaf_no) === L)
+      const row = leavesInBook.find((c) => parseConsignmentNo(c.consignment_no) === L)
       if (row?.accounted) accountedLeafCount++
       if (!row || !row.accounted) break
       accountedThrough = L
     }
 
-    const hasLeafRange = b.leaf_no_from !== null && b.leaf_no_to !== null
+    const hasLeafRange = b.consignment_no_from !== null && b.consignment_no_to !== null
     const leafCount = hasLeafRange
       ? displayLeafTo - displayLeafFrom + 1
       : DEFAULT_BOOK_LEAF_COUNT

@@ -20,7 +20,7 @@ export type BookRow = {
   accountedThrough: number
   /** Leaves in [leafFrom, leafTo] with a consumption row marked accounted. */
   accountedLeafCount: number
-  /** Whether this book has a real leaf_no_from/leaf_no_to assigned (false for unassigned stock books). */
+  /** Whether this book has a real consignment_no_from/consignment_no_to assigned (false for unassigned stock books). */
   hasLeafRange: boolean
   /** Total leaves in this book: leafTo - leafFrom + 1 when assigned, else the standard 50-leaf book size. */
   leafCount: number

@@ -28,12 +28,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip"
 type AccountLeafDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  accountLeafNo: string
-  onAccountLeafNoChange: (value: string) => void
+  accountConsignmentNo: string
+  onAccountConsignmentNoChange: (value: string) => void
   accountLeafTo: string
   onAccountLeafToChange: (value: string) => void
   accountLeafInputRef: RefObject<HTMLInputElement | null>
-  errors: { leafNo?: string; leafTo?: string }
+  errors: { consignmentNo?: string; leafTo?: string }
   canAccount: boolean
   busy: boolean
   accountActionError: string | null
@@ -45,8 +45,8 @@ type AccountLeafDialogProps = {
 export function AccountLeafDialog({
   open,
   onOpenChange,
-  accountLeafNo,
-  onAccountLeafNoChange,
+  accountConsignmentNo,
+  onAccountConsignmentNoChange,
   accountLeafTo,
   onAccountLeafToChange,
   accountLeafInputRef,
@@ -83,8 +83,8 @@ export function AccountLeafDialog({
         <DialogHeader>
           <DialogTitle>Account leaf</DialogTitle>
           <DialogDescription>
-            Enter a leaf number, or a range, to mark leaves accounted. Each
-            leaf must already exist in consumption and be assigned to
+            Enter a consignment number, or a range, to mark leaves accounted.
+            Each leaf must already exist in consumption and be assigned to
             someone.
           </DialogDescription>
         </DialogHeader>
@@ -101,35 +101,37 @@ export function AccountLeafDialog({
         ) : null}
 
         <FieldGroup>
-          <Field data-invalid={!!errors.leafNo}>
-            <FieldLabel htmlFor="account-leaf-no">Leaf no. from</FieldLabel>
+          <Field data-invalid={!!errors.consignmentNo}>
+            <FieldLabel htmlFor="account-consignment-no">
+              Consignment no. from
+            </FieldLabel>
             <FieldContent>
               <Input
-                id="account-leaf-no"
+                id="account-consignment-no"
                 placeholder="e.g. 5 or 2026-5"
-                value={accountLeafNo}
-                onChange={(e) => onAccountLeafNoChange(e.target.value)}
-                aria-invalid={!!errors.leafNo}
+                value={accountConsignmentNo}
+                onChange={(e) => onAccountConsignmentNoChange(e.target.value)}
+                aria-invalid={!!errors.consignmentNo}
                 autoComplete="off"
                 ref={accountLeafInputRef}
               />
               <FieldDescription>
                 Book is inferred from the loaded consumption row for this
-                leaf number.
+                consignment number.
               </FieldDescription>
               <FieldError
-                errors={errors.leafNo ? [{ message: errors.leafNo }] : []}
+                errors={errors.consignmentNo ? [{ message: errors.consignmentNo }] : []}
               />
             </FieldContent>
           </Field>
 
           <Field data-invalid={!!errors.leafTo}>
-            <FieldLabel htmlFor="account-leaf-to">
-              Leaf no. to (optional)
+            <FieldLabel htmlFor="account-consignment-to">
+              Consignment no. to (optional)
             </FieldLabel>
             <FieldContent>
               <Input
-                id="account-leaf-to"
+                id="account-consignment-to"
                 placeholder="e.g. 20 — leave blank for a single leaf"
                 value={accountLeafTo}
                 onChange={(e) => onAccountLeafToChange(e.target.value)}

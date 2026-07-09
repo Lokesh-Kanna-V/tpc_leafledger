@@ -10,29 +10,29 @@ function parseBookId(raw) {
 }
 
 /** Param index for leaf in URL (e.g. 2 for GET, 6 for PUT). */
-function leafNoPredicate(leafParam) {
+function consignmentNoPredicate(leafParam) {
   return `(
-    leaf_no::text = $${leafParam}
-    OR trim(leaf_no::text) = trim($${leafParam}::text)
+    consignment_no::text = $${leafParam}
+    OR trim(consignment_no::text) = trim($${leafParam}::text)
     OR (
-      trim(leaf_no::text) ~ '^-?[0-9]+$'
+      trim(consignment_no::text) ~ '^-?[0-9]+$'
       AND trim($${leafParam}::text) ~ '^-?[0-9]+$'
-      AND trim(leaf_no::text)::bigint = trim($${leafParam}::text)::bigint
+      AND trim(consignment_no::text)::bigint = trim($${leafParam}::text)::bigint
     )
   )`;
 }
 
 export async function GET(_req, { params }) {
-  const { bookId: bookIdRaw, leafNo: leafNoRaw } = await params;
+  const { bookId: bookIdRaw, consignmentNo: consignmentNoRaw } = await params;
   const bookId = parseBookId(bookIdRaw);
-  const leafNo = decodeURIComponent(String(leafNoRaw ?? "")).trim();
-  if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
+  const consignmentNo = decodeURIComponent(String(consignmentNoRaw ?? "")).trim();
+  if (bookId === null || !consignmentNo) return jsonError("Invalid bookId or consignmentNo");
 
   const result = await query(
-    `SELECT book_id, leaf_no, user_id, assigned_date, accounted, accounted_date
+    `SELECT book_id, consignment_no, user_id, assigned_date, accounted, accounted_date
      FROM consumption
-     WHERE book_id = $1 AND ${leafNoPredicate(2)}`,
-    [bookId, leafNo],
+     WHERE book_id = $1 AND ${consignmentNoPredicate(2)}`,
+    [bookId, consignmentNo],
   );
   const row = result.rows[0];
   if (!row) return jsonError("Consumption not found", 404);
@@ -40,10 +40,10 @@ export async function GET(_req, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  const { bookId: bookIdRaw, leafNo: leafNoRaw } = await params;
+  const { bookId: bookIdRaw, consignmentNo: consignmentNoRaw } = await params;
   const bookId = parseBookId(bookIdRaw);
-  const leafNo = decodeURIComponent(String(leafNoRaw ?? "")).trim();
-  if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
+  const consignmentNo = decodeURIComponent(String(consignmentNoRaw ?? "")).trim();
+  if (bookId === null || !consignmentNo) return jsonError("Invalid bookId or consignmentNo");
 
   let body;
   try {
@@ -86,9 +86,9 @@ export async function PUT(request, { params }) {
            assigned_date = $2::date,
            accounted = $3,
            accounted_date = $4::date
-       WHERE book_id = $5 AND ${leafNoPredicate(6)}
-       RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
-      [userIdOrNull, assigned_date.trim(), accounted, accountedDateValue, bookId, leafNo],
+       WHERE book_id = $5 AND ${consignmentNoPredicate(6)}
+       RETURNING book_id, consignment_no, user_id, assigned_date, accounted, accounted_date`,
+      [userIdOrNull, assigned_date.trim(), accounted, accountedDateValue, bookId, consignmentNo],
     );
     const row = result.rows[0];
     if (!row) return jsonError("Consumption not found", 404);
@@ -115,14 +115,14 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(_req, { params }) {
-  const { bookId: bookIdRaw, leafNo: leafNoRaw } = await params;
+  const { bookId: bookIdRaw, consignmentNo: consignmentNoRaw } = await params;
   const bookId = parseBookId(bookIdRaw);
-  const leafNo = decodeURIComponent(String(leafNoRaw ?? "")).trim();
-  if (bookId === null || !leafNo) return jsonError("Invalid bookId or leafNo");
+  const consignmentNo = decodeURIComponent(String(consignmentNoRaw ?? "")).trim();
+  if (bookId === null || !consignmentNo) return jsonError("Invalid bookId or consignmentNo");
 
   const result = await query(
-    `DELETE FROM consumption WHERE book_id = $1 AND ${leafNoPredicate(2)} RETURNING leaf_no`,
-    [bookId, leafNo],
+    `DELETE FROM consumption WHERE book_id = $1 AND ${consignmentNoPredicate(2)} RETURNING consignment_no`,
+    [bookId, consignmentNo],
   );
   if (!result.rows[0]) return jsonError("Consumption not found", 404);
   return Response.json({ ok: true });

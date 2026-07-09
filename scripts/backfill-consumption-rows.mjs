@@ -8,8 +8,8 @@ function isoDateOnly(d) {
   return d.toISOString().slice(0, 10)
 }
 
-function parseLeafNo(leafNo) {
-  const n = Number.parseInt(String(leafNo).trim().replace(/^\d{4}-/, ""), 10)
+function parseConsignmentNo(consignmentNo) {
+  const n = Number.parseInt(String(consignmentNo).trim().replace(/^\d{4}-/, ""), 10)
   return Number.isFinite(n) ? n : null
 }
 
@@ -26,16 +26,16 @@ async function main() {
 
   const books = await prisma.book.findMany({
     where: {
-      leaf_no_from: { not: null },
-      leaf_no_to: { not: null },
+      consignment_no_from: { not: null },
+      consignment_no_to: { not: null },
     },
     select: {
       id: true,
       book_number: true,
-      leaf_no_from: true,
-      leaf_no_to: true,
+      consignment_no_from: true,
+      consignment_no_to: true,
       leaf_year: true,
-      consumptions: { select: { leaf_no: true } },
+      consumptions: { select: { consignment_no: true } },
     },
   })
 
@@ -44,15 +44,15 @@ async function main() {
 
   for (const b of books) {
     const existing = new Set(
-      b.consumptions.map((c) => parseLeafNo(c.leaf_no)).filter((n) => n !== null)
+      b.consumptions.map((c) => parseConsignmentNo(c.consignment_no)).filter((n) => n !== null)
     )
     const prefix = b.leaf_year !== null ? `${b.leaf_year}-` : ""
     const rows = []
-    for (let L = b.leaf_no_from; L <= b.leaf_no_to; L++) {
+    for (let L = b.consignment_no_from; L <= b.consignment_no_to; L++) {
       if (existing.has(L)) continue
       rows.push({
         book_id: b.id,
-        leaf_no: `${prefix}${L}`,
+        consignment_no: `${prefix}${L}`,
         user_id: null,
         assigned_date: today,
         accounted: false,

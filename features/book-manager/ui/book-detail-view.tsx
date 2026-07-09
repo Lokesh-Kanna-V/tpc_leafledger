@@ -16,7 +16,7 @@ import { formatDate } from "@/shared/lib/date"
 import type { BookRow } from "../types"
 
 type LeafDetailRow = {
-  leafNo: number
+  consignmentNo: number
   assignedTo: string
   assignedDate: string | null
   accounted: boolean
@@ -84,7 +84,7 @@ export function BookDetailView({
         <Table>
           <TableHeader className="sticky top-0 z-10 shadow-sm">
             <TableRow>
-              <TableHead className="w-[100px]">Leaf no.</TableHead>
+              <TableHead className="w-[100px]">Consignment no.</TableHead>
               <TableHead>Assigned to</TableHead>
               <TableHead>Assigned date</TableHead>
               <TableHead className="w-[100px] text-center">
@@ -95,9 +95,9 @@ export function BookDetailView({
           </TableHeader>
           <TableBody>
             {leafDetailRows.map((row) => (
-              <TableRow key={row.leafNo}>
+              <TableRow key={row.consignmentNo}>
                 <TableCell className="font-medium tabular-nums">
-                  {row.leafNo}
+                  {row.consignmentNo}
                 </TableCell>
                 <TableCell>{row.assignedTo}</TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">
@@ -111,8 +111,8 @@ export function BookDetailView({
                       className="data-[state=checked]:border-green-600 data-[state=checked]:bg-green-600 data-[state=checked]:text-white dark:data-[state=checked]:bg-green-600"
                       aria-label={
                         row.accounted
-                          ? `Leaf ${row.leafNo} accounted`
-                          : `Leaf ${row.leafNo} not accounted`
+                          ? `Consignment ${row.consignmentNo} accounted`
+                          : `Consignment ${row.consignmentNo} not accounted`
                       }
                     />
                   </div>

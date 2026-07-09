@@ -6,9 +6,9 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const result = await query(
-    `SELECT book_id, leaf_no, user_id, assigned_date, accounted, accounted_date
+    `SELECT book_id, consignment_no, user_id, assigned_date, accounted, accounted_date
      FROM consumption
-     ORDER BY book_id NULLS LAST, leaf_no`,
+     ORDER BY book_id NULLS LAST, consignment_no`,
   );
   return Response.json(result.rows);
 }
@@ -21,13 +21,13 @@ export async function POST(request) {
     return jsonError("Invalid JSON body");
   }
 
-  const { book_id, leaf_no, user_id, assigned_date, accounted, accounted_date } = body ?? {};
+  const { book_id, consignment_no, user_id, assigned_date, accounted, accounted_date } = body ?? {};
 
   if (!Number.isInteger(book_id)) return jsonError("book_id is required (integer)");
 
-  if (typeof leaf_no !== "string" || !leaf_no.trim()) return jsonError("leaf_no is required");
+  if (typeof consignment_no !== "string" || !consignment_no.trim()) return jsonError("consignment_no is required");
 
-  let leafNorm = leaf_no.trim();
+  let leafNorm = consignment_no.trim();
   if (/^\d+$/.test(leafNorm)) {
     leafNorm = String(Number.parseInt(leafNorm, 10));
   }
@@ -57,9 +57,9 @@ export async function POST(request) {
   try {
     const result = await query(
       `INSERT INTO consumption
-        (book_id, leaf_no, user_id, assigned_date, accounted, accounted_date)
+        (book_id, consignment_no, user_id, assigned_date, accounted, accounted_date)
        VALUES ($1, $2, $3, $4::date, $5, $6::date)
-       RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
+       RETURNING book_id, consignment_no, user_id, assigned_date, accounted, accounted_date`,
       [
         book_id,
         leafNorm,

@@ -4,20 +4,20 @@ import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
-function leafNoPredicate(leafParam) {
+function consignmentNoPredicate(leafParam) {
   return `(
-    leaf_no::text = $${leafParam}
-    OR trim(leaf_no::text) = trim($${leafParam}::text)
+    consignment_no::text = $${leafParam}
+    OR trim(consignment_no::text) = trim($${leafParam}::text)
     OR (
-      trim(leaf_no::text) ~ '^-?[0-9]+$'
+      trim(consignment_no::text) ~ '^-?[0-9]+$'
       AND trim($${leafParam}::text) ~ '^-?[0-9]+$'
-      AND trim(leaf_no::text)::bigint = trim($${leafParam}::text)::bigint
+      AND trim(consignment_no::text)::bigint = trim($${leafParam}::text)::bigint
     )
   )`;
 }
 
-function normalizeLeaf(leaf_no) {
-  const t = String(leaf_no ?? "").trim();
+function normalizeLeaf(consignment_no) {
+  const t = String(consignment_no ?? "").trim();
   if (/^\d+$/.test(t)) return String(Number.parseInt(t, 10));
   return t;
 }
@@ -44,25 +44,25 @@ export async function POST(request) {
     return jsonError("Invalid JSON body");
   }
 
-  const raw = body?.leaf_no;
+  const raw = body?.consignment_no;
   if (raw === undefined || raw === null || String(raw).trim() === "") {
-    return jsonError("leaf_no is required");
+    return jsonError("consignment_no is required");
   }
 
   const leafNorm = normalizeLeaf(String(raw));
 
   try {
     const found = await query(
-      `SELECT book_id, leaf_no, user_id, assigned_date, accounted, accounted_date
+      `SELECT book_id, consignment_no, user_id, assigned_date, accounted, accounted_date
        FROM consumption
-       WHERE ${leafNoPredicate(1)}
+       WHERE ${consignmentNoPredicate(1)}
        ORDER BY book_id ASC NULLS LAST`,
       [leafNorm],
     );
 
     const rows = found.rows;
     if (rows.length === 0) {
-      return jsonError(`No consumption row for leaf ${leafNorm}.`, 404);
+      return jsonError(`No consumption row for consignment ${leafNorm}.`, 404);
     }
 
     const bookIds = [
@@ -70,7 +70,7 @@ export async function POST(request) {
     ];
     if (bookIds.length > 1) {
       return jsonError(
-        "That leaf number exists on more than one book. Fix data or use distinct leaf ranges.",
+        "That consignment number exists on more than one book. Fix data or use distinct leaf ranges.",
         409,
       );
     }
@@ -86,7 +86,7 @@ export async function POST(request) {
     }
 
     if (row.accounted) {
-      return jsonError(`Leaf ${leafNorm} is already accounted.`, 400);
+      return jsonError(`Consignment ${leafNorm} is already accounted.`, 400);
     }
 
     const today = dateIsoLocal();
@@ -95,14 +95,14 @@ export async function POST(request) {
       `UPDATE consumption
        SET accounted = true,
            accounted_date = $1::date
-       WHERE book_id = $2 AND ${leafNoPredicate(3)}
-       RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date`,
+       WHERE book_id = $2 AND ${consignmentNoPredicate(3)}
+       RETURNING book_id, consignment_no, user_id, assigned_date, accounted, accounted_date`,
       [today, bookId, leafNorm],
     );
 
     const out = upd.rows[0];
     if (!out) {
-      return jsonError(`No consumption row for leaf ${leafNorm}.`, 404);
+      return jsonError(`No consumption row for consignment ${leafNorm}.`, 404);
     }
 
     await refreshBookCompletionStatus(bookId);

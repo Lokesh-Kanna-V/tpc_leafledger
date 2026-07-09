@@ -4,20 +4,20 @@ import { humanizePgError, jsonError, pgCode } from "@/lib/http";
 
 export const runtime = "nodejs";
 
-function leafNoPredicate(leafParam) {
+function consignmentNoPredicate(leafParam) {
   return `(
-    leaf_no::text = $${leafParam}
-    OR trim(leaf_no::text) = trim($${leafParam}::text)
+    consignment_no::text = $${leafParam}
+    OR trim(consignment_no::text) = trim($${leafParam}::text)
     OR (
-      trim(leaf_no::text) ~ '^-?[0-9]+$'
+      trim(consignment_no::text) ~ '^-?[0-9]+$'
       AND trim($${leafParam}::text) ~ '^-?[0-9]+$'
-      AND trim(leaf_no::text)::bigint = trim($${leafParam}::text)::bigint
+      AND trim(consignment_no::text)::bigint = trim($${leafParam}::text)::bigint
     )
   )`;
 }
 
-function normalizeLeaf(leaf_no) {
-  const t = String(leaf_no ?? "").trim();
+function normalizeLeaf(consignment_no) {
+  const t = String(consignment_no ?? "").trim();
   if (/^\d+$/.test(t)) return String(Number.parseInt(t, 10));
   return t;
 }
@@ -41,12 +41,12 @@ export async function POST(request) {
     return jsonError("Invalid JSON body");
   }
 
-  const { book_id, leaf_no, user_id, assigned_date, accounted, accounted_date } = body ?? {};
+  const { book_id, consignment_no, user_id, assigned_date, accounted, accounted_date } = body ?? {};
 
   if (!Number.isInteger(book_id)) return jsonError("book_id is required (integer)");
-  if (typeof leaf_no !== "string" || !leaf_no.trim()) return jsonError("leaf_no is required");
+  if (typeof consignment_no !== "string" || !consignment_no.trim()) return jsonError("consignment_no is required");
 
-  const leafNorm = normalizeLeaf(leaf_no);
+  const leafNorm = normalizeLeaf(consignment_no);
 
   const userIdOrNull = user_id === undefined || user_id === null ? null : user_id;
   if (userIdOrNull !== null && !Number.isInteger(userIdOrNull)) {
@@ -70,7 +70,7 @@ export async function POST(request) {
   }
 
   const returning =
-    "RETURNING book_id, leaf_no, user_id, assigned_date, accounted, accounted_date";
+    "RETURNING book_id, consignment_no, user_id, assigned_date, accounted, accounted_date";
 
   try {
     let result = await query(
@@ -79,7 +79,7 @@ export async function POST(request) {
            assigned_date = $2::date,
            accounted = $3,
            accounted_date = $4::date
-       WHERE book_id = $5 AND ${leafNoPredicate(6)}
+       WHERE book_id = $5 AND ${consignmentNoPredicate(6)}
        ${returning}`,
       [
         userIdOrNull,
@@ -101,7 +101,7 @@ export async function POST(request) {
     try {
       result = await query(
         `INSERT INTO consumption
-          (book_id, leaf_no, user_id, assigned_date, accounted, accounted_date)
+          (book_id, consignment_no, user_id, assigned_date, accounted, accounted_date)
          VALUES ($1, $2, $3, $4::date, $5, $6::date)
          ${returning}`,
         [
@@ -129,7 +129,7 @@ export async function POST(request) {
            assigned_date = $3::date,
            accounted = $4,
            accounted_date = $5::date
-       WHERE (${leafNoPredicate(6)}) AND book_id IS NULL
+       WHERE (${consignmentNoPredicate(6)}) AND book_id IS NULL
        ${returning}`,
       [
         book_id,
@@ -149,18 +149,18 @@ export async function POST(request) {
     }
 
     const clash = await query(
-      `SELECT book_id FROM consumption WHERE ${leafNoPredicate(1)} LIMIT 1`,
+      `SELECT book_id FROM consumption WHERE ${consignmentNoPredicate(1)} LIMIT 1`,
       [leafNorm],
     );
     const ownerId = clash.rows[0]?.book_id;
     if (ownerId != null && ownerId !== book_id) {
       return jsonError(
-        `Leaf ${leafNorm} is already tied to book ${ownerId}. Change leaf ranges or fix the database.`,
+        `Consignment ${leafNorm} is already tied to book ${ownerId}. Change leaf ranges or fix the database.`,
         409,
       );
     }
 
-    return jsonError(`Could not upsert leaf ${leafNorm} for book ${book_id}.`, 409);
+    return jsonError(`Could not upsert consignment ${leafNorm} for book ${book_id}.`, 409);
   } catch (err) {
     const human = humanizePgError(err);
     if (human) return jsonError(human.message, human.status);

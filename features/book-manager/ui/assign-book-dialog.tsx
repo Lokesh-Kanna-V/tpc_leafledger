@@ -244,7 +244,7 @@ export function AssignBookDialog({
             data-invalid={!!errors.leafFrom}
             data-disabled={assignNewBook}
           >
-            <FieldLabel htmlFor="assign-leaf-from">Leaf from</FieldLabel>
+            <FieldLabel htmlFor="assign-leaf-from">Consignment no. from</FieldLabel>
             <FieldContent>
               <Input
                 id="assign-leaf-from"

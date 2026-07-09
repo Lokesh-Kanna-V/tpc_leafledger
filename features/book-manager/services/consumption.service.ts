@@ -2,7 +2,7 @@ import { parseResponse } from "@/shared/services/api-client"
 
 export type Consumption = {
   book_id: number | null
-  leaf_no: string
+  consignment_no: string
   user_id: number | null
   assigned_date: string
   accounted: boolean
@@ -11,7 +11,7 @@ export type Consumption = {
 
 export type CreateConsumptionInput = {
   book_id: number
-  leaf_no: string
+  consignment_no: string
   /** Null when the leaf exists but is not assigned to an employee yet. */
   user_id: number | null
   assigned_date: string
@@ -26,13 +26,13 @@ export type UpdateConsumptionInput = {
   accounted_date: string | null
 }
 
-function consumptionPath(bookId: number, leafNo: string): string {
-  return `/api/consumption/${encodeURIComponent(String(bookId))}/${encodeURIComponent(leafNo)}`
+function consumptionPath(bookId: number, consignmentNo: string): string {
+  return `/api/consumption/${encodeURIComponent(String(bookId))}/${encodeURIComponent(consignmentNo)}`
 }
 
 /** Match URL and DB storage (e.g. "05" vs "5"). */
-export function canonicalLeafNo(leafNo: string): string {
-  const t = String(leafNo).trim()
+export function canonicalConsignmentNo(consignmentNo: string): string {
+  const t = String(consignmentNo).trim()
   if (/^\d+$/.test(t)) return String(Number.parseInt(t, 10))
   return t
 }
@@ -48,7 +48,7 @@ export async function createConsumption(
 ): Promise<Consumption> {
   const payload: CreateConsumptionInput = {
     ...body,
-    leaf_no: canonicalLeafNo(body.leaf_no),
+    consignment_no: canonicalConsignmentNo(body.consignment_no),
   }
   const response = await fetch("/api/consumption", {
     method: "POST",
@@ -60,9 +60,9 @@ export async function createConsumption(
 
 export async function getConsumption(
   bookId: number,
-  leafNo: string
+  consignmentNo: string
 ): Promise<Consumption> {
-  const key = canonicalLeafNo(leafNo)
+  const key = canonicalConsignmentNo(consignmentNo)
   const response = await fetch(consumptionPath(bookId, key), {
     method: "GET",
   })
@@ -71,10 +71,10 @@ export async function getConsumption(
 
 export async function updateConsumption(
   bookId: number,
-  leafNo: string,
+  consignmentNo: string,
   body: UpdateConsumptionInput
 ): Promise<Consumption> {
-  const key = canonicalLeafNo(leafNo)
+  const key = canonicalConsignmentNo(consignmentNo)
   const response = await fetch(consumptionPath(bookId, key), {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -85,22 +85,22 @@ export async function updateConsumption(
 
 export async function deleteConsumption(
   bookId: number,
-  leafNo: string
+  consignmentNo: string
 ): Promise<{ ok: true }> {
-  const key = canonicalLeafNo(leafNo)
+  const key = canonicalConsignmentNo(consignmentNo)
   const response = await fetch(consumptionPath(bookId, key), {
     method: "DELETE",
   })
   return parseResponse<{ ok: true }>(response)
 }
 
-/** Mark one leaf accounted; resolves row in the database by leaf_no only. */
-export async function accountConsumptionLeaf(leafNo: string): Promise<Consumption> {
-  const key = canonicalLeafNo(leafNo)
+/** Mark one leaf accounted; resolves row in the database by consignment_no only. */
+export async function accountConsumptionLeaf(consignmentNo: string): Promise<Consumption> {
+  const key = canonicalConsignmentNo(consignmentNo)
   const response = await fetch("/api/consumption/account", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ leaf_no: key }),
+    body: JSON.stringify({ consignment_no: key }),
   })
   return parseResponse<Consumption>(response)
 }
@@ -108,16 +108,16 @@ export async function accountConsumptionLeaf(leafNo: string): Promise<Consumptio
 /** Assign/update one leaf without relying on POST 409 + PUT (legacy rows may not match PUT filters). */
 export async function upsertConsumptionAssignment(
   bookId: number,
-  leafNo: string,
+  consignmentNo: string,
   params: UpdateConsumptionInput
 ): Promise<Consumption> {
-  const key = canonicalLeafNo(leafNo)
+  const key = canonicalConsignmentNo(consignmentNo)
   const response = await fetch("/api/consumption/upsert", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       book_id: bookId,
-      leaf_no: key,
+      consignment_no: key,
       user_id: params.user_id ?? null,
       assigned_date: params.assigned_date,
       accounted: params.accounted ?? false,

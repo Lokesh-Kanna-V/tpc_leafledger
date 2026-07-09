@@ -7,8 +7,8 @@ export type Book = {
   office_id: number | null
   book_number: string
   initial_assigned_date: string | null
-  leaf_no_from: number | null
-  leaf_no_to: number | null
+  consignment_no_from: number | null
+  consignment_no_to: number | null
   /** Calendar year this book's leaf range belongs to; server-assigned when the range is first set. */
   leaf_year: number | null
   book_status: BookStatus
@@ -19,8 +19,8 @@ export type CreateBookInput = {
   office_id: number
   book_number: string
   initial_assigned_date: string | null
-  leaf_no_from: number
-  leaf_no_to: number
+  consignment_no_from: number
+  consignment_no_to: number
   book_status: BookStatus
   in_floor: boolean
 }
@@ -30,8 +30,8 @@ export type UpdateBookInput = {
   office_id: number | null
   book_number: string
   initial_assigned_date: string | null
-  leaf_no_from: number | null
-  leaf_no_to: number | null
+  consignment_no_from: number | null
+  consignment_no_to: number | null
   book_status: BookStatus
   in_floor: boolean
 }
@@ -42,8 +42,8 @@ export function bookToUpdateBody(b: Book): UpdateBookInput {
     office_id: b.office_id,
     book_number: b.book_number,
     initial_assigned_date: b.initial_assigned_date,
-    leaf_no_from: b.leaf_no_from,
-    leaf_no_to: b.leaf_no_to,
+    consignment_no_from: b.consignment_no_from,
+    consignment_no_to: b.consignment_no_to,
     book_status: b.book_status,
     in_floor: b.in_floor,
   }

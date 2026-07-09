@@ -24,7 +24,7 @@ import type { BookRow, BookStatus } from "../types"
 import {
   displayLeafSpanForBook,
   minAssignableLeaf,
-  parseLeafNo,
+  parseConsignmentNo,
 } from "../helpers/book-rows"
 import {
   effectiveLeafYear,
@@ -68,7 +68,7 @@ export function useBookManager({
   const [assignLeafFrom, setAssignLeafFrom] = useState("")
   const [assignNewBook, setAssignNewBook] = useState(false)
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
-  const [accountLeafNo, setAccountLeafNo] = useState("")
+  const [accountConsignmentNo, setAccountConsignmentNo] = useState("")
   const [accountLeafTo, setAccountLeafTo] = useState("")
   const accountLeafInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -138,7 +138,7 @@ export function useBookManager({
     if (!b) return []
     const empMap = new Map(employees.map((e) => [e.id, e.name]))
     const rows: {
-      leafNo: number
+      consignmentNo: number
       assignedTo: string
       assignedDate: string | null
       accounted: boolean
@@ -146,10 +146,10 @@ export function useBookManager({
     }[] = []
     for (let L = b.leafFrom; L <= b.leafTo; L++) {
       const cons = consumptions.find(
-        (c) => c.book_id === b.dbId && parseLeafNo(c.leaf_no) === L
+        (c) => c.book_id === b.dbId && parseConsignmentNo(c.consignment_no) === L
       )
       rows.push({
-        leafNo: L,
+        consignmentNo: L,
         assignedTo:
           cons?.user_id != null
             ? (empMap.get(cons.user_id) ?? `User #${cons.user_id}`)
@@ -193,7 +193,7 @@ export function useBookManager({
       assignee?: string
     } = {}
 
-    if (!bookNo.trim()) e.bookNo = "Leaf No. is required."
+    if (!bookNo.trim()) e.bookNo = "Book No. is required."
 
     if (offices.length === 0) {
       e.office = "No offices available."
@@ -230,7 +230,7 @@ export function useBookManager({
           new Date().getFullYear()
         )
         if (conflict) {
-          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
+          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.consignment_no_from}-${conflict.consignment_no_to}). Choose a range starting after ${conflict.consignment_no_to}.`
         }
       }
     }
@@ -419,26 +419,26 @@ export function useBookManager({
     !assignErrors.assignBlocked
 
   const accountErrors = useMemo(() => {
-    const e: { leafNo?: string; leafTo?: string } = {}
-    const raw = accountLeafNo.trim()
+    const e: { consignmentNo?: string; leafTo?: string } = {}
+    const raw = accountConsignmentNo.trim()
     if (!raw) {
-      e.leafNo = "Leaf no. is required."
+      e.consignmentNo = "Consignment no. is required."
     } else {
       const plainMatch = /^\d+$/.test(raw)
       const yearPrefixedMatch = /^\d{4}-\d+$/.test(raw)
       if (!plainMatch && !yearPrefixedMatch) {
-        e.leafNo = "Enter a leaf number, e.g. 5 or 2026-5."
+        e.consignmentNo = "Enter a consignment number, e.g. 5 or 2026-5."
       } else {
         const n = Number.parseInt(plainMatch ? raw : raw.split("-")[1], 10)
-        if (n < 1) e.leafNo = "Leaf no. must be at least 1."
+        if (n < 1) e.consignmentNo = "Consignment no. must be at least 1."
       }
     }
 
     const toRaw = accountLeafTo.trim()
     if (toRaw) {
       if (!/^\d+$/.test(toRaw)) {
-        e.leafTo = "Enter a plain leaf number, e.g. 20."
-      } else if (!e.leafNo) {
+        e.leafTo = "Enter a plain consignment number, e.g. 20."
+      } else if (!e.consignmentNo) {
         const plainMatch = /^\d+$/.test(raw)
         const fromNum = Number.parseInt(
           plainMatch ? raw : raw.split("-")[1],
@@ -446,7 +446,7 @@ export function useBookManager({
         )
         const toNum = Number.parseInt(toRaw, 10)
         if (toNum < fromNum) {
-          e.leafTo = "Leaf no. to must be at or after leaf no. from."
+          e.leafTo = "Consignment no. to must be at or after consignment no. from."
         } else if (toNum - fromNum + 1 > 200) {
           e.leafTo = "Range too large — account at most 200 leaves at once."
         }
@@ -454,9 +454,9 @@ export function useBookManager({
     }
 
     return e
-  }, [accountLeafNo, accountLeafTo])
+  }, [accountConsignmentNo, accountLeafTo])
 
-  const canAccount = !accountErrors.leafNo && !accountErrors.leafTo
+  const canAccount = !accountErrors.consignmentNo && !accountErrors.leafTo
 
   const editErrors = useMemo(() => {
     const e: {
@@ -498,7 +498,7 @@ export function useBookManager({
           effectiveLeafYear(editingBook)
         )
         if (conflict) {
-          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
+          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.consignment_no_from}-${conflict.consignment_no_to}). Choose a range starting after ${conflict.consignment_no_to}.`
         }
       }
     }
@@ -518,12 +518,12 @@ export function useBookManager({
       if (apiBook) {
         const from = fromTrim
           ? Number.parseInt(fromTrim, 10)
-          : apiBook.leaf_no_from
-        const to = toTrim ? Number.parseInt(toTrim, 10) : apiBook.leaf_no_to
+          : apiBook.consignment_no_from
+        const to = toTrim ? Number.parseInt(toTrim, 10) : apiBook.consignment_no_to
         const updatedBook: Book = {
           ...apiBook,
-          leaf_no_from: from,
-          leaf_no_to: to,
+          consignment_no_from: from,
+          consignment_no_to: to,
         }
         const span = displayLeafSpanForBook(updatedBook)
         const minLeaf = minAssignableLeaf(updatedBook, consumptions)
@@ -658,7 +658,7 @@ export function useBookManager({
           new Date().getFullYear()
         )
         if (conflict) {
-          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.leaf_no_from}-${conflict.leaf_no_to}). Choose a range starting after ${conflict.leaf_no_to}.`
+          e.leafTo = `Leaves ${from}-${to} overlap with book ${conflict.book_number} (leaves ${conflict.consignment_no_from}-${conflict.consignment_no_to}). Choose a range starting after ${conflict.consignment_no_to}.`
         }
       }
     }
@@ -706,16 +706,16 @@ export function useBookManager({
   }
 
   function resetAccountForm() {
-    setAccountLeafNo("")
+    setAccountConsignmentNo("")
     setAccountLeafTo("")
   }
 
-  /** Accounts a single leaf, or every leaf from accountLeafNo through accountLeafTo
+  /** Accounts a single leaf, or every leaf from accountConsignmentNo through accountLeafTo
    *  (inclusive) when a "to" value is given. Continues past individual failures
    *  (e.g. a leaf with no consumption row) so one bad leaf doesn't block the rest. */
   async function accountLeaves(): Promise<boolean> {
     if (!canAccount) return false
-    const fromRaw = accountLeafNo.trim()
+    const fromRaw = accountConsignmentNo.trim()
     const toRaw = accountLeafTo.trim()
 
     setBusy(true)
@@ -783,14 +783,14 @@ export function useBookManager({
     const existingLeaves = new Set(
       consumptions
         .filter((c) => Number(c.book_id) === bookId)
-        .map((c) => parseLeafNo(c.leaf_no))
+        .map((c) => parseConsignmentNo(c.consignment_no))
     )
     for (let L = from; L <= to; L++) {
       if (existingLeaves.has(L)) continue
       try {
         await createConsumption({
           book_id: bookId,
-          leaf_no: `${leafPrefix}${L}`,
+          consignment_no: `${leafPrefix}${L}`,
           user_id: null,
           assigned_date: today,
           accounted: false,
@@ -844,7 +844,7 @@ export function useBookManager({
         return false
       }
 
-      // Only update consumption rows — do not change book.leaf_no_from, or later
+      // Only update consumption rows — do not change book.consignment_no_from, or later
       // assignments would shrink the visible range and hide leaves assigned earlier.
 
       const leafPrefix =
@@ -911,8 +911,8 @@ export function useBookManager({
         office_id: officeIdNum,
         book_number: bookNo.trim(),
         initial_assigned_date: initialDate,
-        leaf_no_from: from,
-        leaf_no_to: to,
+        consignment_no_from: from,
+        consignment_no_to: to,
         book_status: "current",
         in_floor: true,
       })
@@ -926,7 +926,7 @@ export function useBookManager({
         for (let L = from; L <= to; L++) {
           await createConsumption({
             book_id: created.id,
-            leaf_no: `${leafPrefix}${L}`,
+            consignment_no: `${leafPrefix}${L}`,
             user_id: userIdForLeaves,
             assigned_date: today,
             accounted: false,
@@ -991,9 +991,9 @@ export function useBookManager({
     setEditBookNo(apiBook.book_number)
     setEditOfficeId(apiBook.office_id !== null ? String(apiBook.office_id) : "")
     setEditLeafFrom(
-      apiBook.leaf_no_from !== null ? String(apiBook.leaf_no_from) : ""
+      apiBook.consignment_no_from !== null ? String(apiBook.consignment_no_from) : ""
     )
-    setEditLeafTo(apiBook.leaf_no_to !== null ? String(apiBook.leaf_no_to) : "")
+    setEditLeafTo(apiBook.consignment_no_to !== null ? String(apiBook.consignment_no_to) : "")
     setEditEmployeeId("")
     setEditNewEmployeeName("")
     setEditNewEmployeeRole("")
@@ -1019,8 +1019,8 @@ export function useBookManager({
         office_id: officeIdNum,
         book_number: editBookNo.trim(),
         initial_assigned_date: apiBook.initial_assigned_date,
-        leaf_no_from: leafFromNum,
-        leaf_no_to: leafToNum,
+        consignment_no_from: leafFromNum,
+        consignment_no_to: leafToNum,
         book_status: apiBook.book_status,
         in_floor: apiBook.in_floor,
       })
@@ -1051,8 +1051,8 @@ export function useBookManager({
 
         const updatedBook: Book = {
           ...apiBook,
-          leaf_no_from: leafFromNum,
-          leaf_no_to: leafToNum,
+          consignment_no_from: leafFromNum,
+          consignment_no_to: leafToNum,
         }
         const span = displayLeafSpanForBook(updatedBook)
         const minLeaf = minAssignableLeaf(updatedBook, consumptions)
@@ -1122,7 +1122,7 @@ export function useBookManager({
 
     const pending = matched.filter((id) => {
       const b = apiBooks.find((bk) => bk.id === id)
-      return b?.leaf_no_from === null
+      return b?.consignment_no_from === null
     })
 
     setBulkActionError(null)
@@ -1156,8 +1156,8 @@ export function useBookManager({
     try {
       const updated = await updateBook(bulkCurrentLeafBookId, {
         ...bookToUpdateBody(bulkCurrentLeafBook),
-        leaf_no_from: from,
-        leaf_no_to: to,
+        consignment_no_from: from,
+        consignment_no_to: to,
       })
       const leafPrefix = updated.leaf_year !== null ? `${updated.leaf_year}-` : ""
       await backfillConsumptionRange(
@@ -1321,8 +1321,8 @@ export function useBookManager({
     // account leaf dialog
     accountDialogOpen,
     setAccountDialogOpen,
-    accountLeafNo,
-    setAccountLeafNo,
+    accountConsignmentNo,
+    setAccountConsignmentNo,
     accountLeafTo,
     setAccountLeafTo,
     accountLeafInputRef,

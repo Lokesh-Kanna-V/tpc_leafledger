@@ -32,8 +32,8 @@ export function LotsTable({
       <TableHeader>
         <TableRow>
           <TableHead>Lot number</TableHead>
-          <TableHead>Book from</TableHead>
-          <TableHead>Book to</TableHead>
+          <TableHead>Book Serial from</TableHead>
+          <TableHead>Book Serial to</TableHead>
           <TableHead className="text-right">Books</TableHead>
           <TableHead>Created</TableHead>
           <TableHead className="w-[200px] text-right">Actions</TableHead>

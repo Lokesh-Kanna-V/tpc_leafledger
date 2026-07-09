@@ -65,7 +65,7 @@ export function humanizePgError(
   if (code === "23505") {
     // unique_violation
     if (detail) {
-      // e.g. Key (leaf_no)=(301) already exists.
+      // e.g. Key (consignment_no)=(301) already exists.
       const m = /Key\s+\(([^)]+)\)=\(([^)]+)\)\s+already exists\./i.exec(detail)
       if (m) {
         const field = m[1]

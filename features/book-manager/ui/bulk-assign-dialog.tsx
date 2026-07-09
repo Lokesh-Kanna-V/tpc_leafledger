@@ -161,7 +161,9 @@ export function BulkAssignDialog({
             <FieldGroup>
               <div className="grid grid-cols-2 gap-3">
                 <Field data-invalid={!!bulkFormErrors.bookFrom}>
-                  <FieldLabel htmlFor="bulk-book-from">Book from</FieldLabel>
+                  <FieldLabel htmlFor="bulk-book-from">
+                    Book Serial from
+                  </FieldLabel>
                   <FieldContent>
                     <Input
                       id="bulk-book-from"
@@ -181,7 +183,7 @@ export function BulkAssignDialog({
                   </FieldContent>
                 </Field>
                 <Field data-invalid={!!bulkFormErrors.bookTo}>
-                  <FieldLabel htmlFor="bulk-book-to">Book to</FieldLabel>
+                  <FieldLabel htmlFor="bulk-book-to">Book Serial to</FieldLabel>
                   <FieldContent>
                     <Input
                       id="bulk-book-to"
@@ -303,8 +305,8 @@ export function BulkAssignDialog({
                         aria-invalid={!!bulkFormErrors.newEmployeeRole}
                       />
                       <FieldDescription>
-                        They will be saved to Employees and assigned to
-                        these books.
+                        They will be saved to Employees and assigned to these
+                        books.
                       </FieldDescription>
                       <FieldError
                         errors={
@@ -342,8 +344,8 @@ export function BulkAssignDialog({
                 <strong> Book {bulkCurrentLeafBook?.book_number ?? ""}</strong>
               </DialogTitle>
               <DialogDescription>
-                Book {bulkCurrentLeafBook?.book_number ?? ""} doesn&rsquo;t
-                have a leaf range yet. Enter one to continue (
+                Book {bulkCurrentLeafBook?.book_number ?? ""} doesn&rsquo;t have
+                a leaf range yet. Enter one to continue (
                 {bulkLeafTotal - bulkPendingLeafBookIdsCount + 1} of{" "}
                 {bulkLeafTotal}).
               </DialogDescription>
@@ -358,7 +360,9 @@ export function BulkAssignDialog({
             <FieldGroup>
               <div className="grid grid-cols-2 gap-3">
                 <Field data-invalid={!!bulkLeafErrors.leafFrom}>
-                  <FieldLabel htmlFor="bulk-leaf-from">Leaf from</FieldLabel>
+                  <FieldLabel htmlFor="bulk-leaf-from">
+                    Consignment no. from
+                  </FieldLabel>
                   <FieldContent>
                     <Input
                       id="bulk-leaf-from"
@@ -378,7 +382,9 @@ export function BulkAssignDialog({
                   </FieldContent>
                 </Field>
                 <Field data-invalid={!!bulkLeafErrors.leafTo}>
-                  <FieldLabel htmlFor="bulk-leaf-to">Leaf to</FieldLabel>
+                  <FieldLabel htmlFor="bulk-leaf-to">
+                    Consignment no. to
+                  </FieldLabel>
                   <FieldContent>
                     <Input
                       id="bulk-leaf-to"

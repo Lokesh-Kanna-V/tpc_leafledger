@@ -137,8 +137,8 @@ export default function BookManager({
               <AccountLeafDialog
                 open={bm.accountDialogOpen}
                 onOpenChange={bm.setAccountDialogOpen}
-                accountLeafNo={bm.accountLeafNo}
-                onAccountLeafNoChange={bm.setAccountLeafNo}
+                accountConsignmentNo={bm.accountConsignmentNo}
+                onAccountConsignmentNoChange={bm.setAccountConsignmentNo}
                 accountLeafTo={bm.accountLeafTo}
                 onAccountLeafToChange={bm.setAccountLeafTo}
                 accountLeafInputRef={bm.accountLeafInputRef}

@@ -25,9 +25,9 @@ assigned to employees and later "accounted" (reconciled/audited).
 | `Office` | A field office / pickup center. Has `leaf_alert_days` — how many days a book assigned here may sit unaccounted before it's flagged overdue (default 2). |
 | `Employee` | A staff member. Has `name`, `role`, optional `password` (only employees with `role = admin` or `developer` can log in to the app). Employees are linked to offices via `EmployeeOffice`. |
 | `EmployeeOffice` | Join table, employee ⇄ office (many-to-many). |
-| `Book` | A physical booklet: `book_number` (unique, year-prefixed e.g. `2026-17`), `office_id`, `leaf_no_from`/`leaf_no_to` (the leaf range once assigned), `leaf_year` (which calendar year that range belongs to, since raw leaf numbers restart at 1 every year), `book_status` (`store` \| `current` \| `completed`), `in_floor` (physically taken to the office floor but not yet formally assigned), and an optional `lot_number` (which stock lot generated it). |
+| `Book` | A physical booklet: `book_number` (unique, year-prefixed e.g. `2026-17`), `office_id`, `consignment_no_from`/`consignment_no_to` (the leaf range once assigned), `leaf_year` (which calendar year that range belongs to, since raw consignment numbers restart at 1 every year), `book_status` (`store` \| `current` \| `completed`), `in_floor` (physically taken to the office floor but not yet formally assigned), and an optional `lot_number` (which stock lot generated it). |
 | `Lot` | A batch of stock books created together — a lot with `book_from=1, book_to=100` generates 100 `store`-status books numbered `<year>-1` … `<year>-100`. |
-| `Consumption` | One row per **leaf** of a book: `book_id` + `leaf_no` (composite PK), `user_id` (employee it's assigned to, nullable), `assigned_date`, `accounted` (bool), `accounted_date`. This is the ledger of who used which leaf and whether it's been reconciled. |
+| `Consumption` | One row per **leaf** of a book: `book_id` + `consignment_no` (composite PK), `user_id` (employee it's assigned to, nullable), `assigned_date`, `accounted` (bool), `accounted_date`. This is the ledger of who used which leaf and whether it's been reconciled. |
 | `Alert` | System-generated alerts. Currently one type: `ACCOUNTING_OVERDUE`, one row per book, upserted/resolved automatically (unique on `(type, book_id)`). |
 
 ### Book lifecycle
@@ -40,7 +40,7 @@ Lot created (book_from..book_to)
         │  (assigned an office + leaf range, or taken to floor)
         ▼
   book_status = "current" (in_floor = true, leaves get assigned to employees)
-        │  (every leaf in leaf_no_from..leaf_no_to is accounted)
+        │  (every leaf in consignment_no_from..consignment_no_to is accounted)
         ▼
   book_status = "completed"
 ```
@@ -49,10 +49,10 @@ Key derived rules (`lib/book-completion.js`, `lib/books.ts`):
 - A book auto-flips to `completed` once **every leaf in its declared range** has
   `consumption.accounted = true` (checked after every consumption insert/update/upsert/account
   call — `refreshBookCompletionStatus(bookId)`).
-- `leaf_no` is stored as text and may carry a `"YYYY-"` year prefix (e.g. `"2026-5"`); helper
+- `consignment_no` is stored as text and may carry a `"YYYY-"` year prefix (e.g. `"2026-5"`); helper
   functions strip/re-add this prefix consistently across the API and UI.
 - **Leaf-range overlap** is validated server-side: two books can't have overlapping
-  `leaf_no_from..leaf_no_to` ranges within the same `leaf_year`.
+  `consignment_no_from..consignment_no_to` ranges within the same `leaf_year`.
 - **Minimum assignable leaf**: when (re)assigning a book, the UI/API only allows assigning from
   `max(already-accounted leaf) + 1` onward — leaves already accounted can't be reassigned.
 
@@ -253,16 +253,16 @@ Most routes run with `export const runtime = "nodejs"`.
 | Lots | `GET/POST /api/lots`, `GET/PUT/DELETE /api/lots/[id]` |
 | Offices | `GET/POST /api/offices`, `GET/PUT/DELETE /api/offices/[id]` |
 | Employees | `GET/POST /api/employees`, `GET/PUT/DELETE /api/employees/[id]` (employee rows carry a derived `office_ids: number[]`) |
-| Consumption | `GET/POST /api/consumption`, `GET/PUT/DELETE /api/consumption/[bookId]/[leafNo]`, `POST /api/consumption/account` (mark one leaf accounted by leaf number alone), `POST /api/consumption/upsert` (assign/update without needing to know if the row exists yet) |
+| Consumption | `GET/POST /api/consumption`, `GET/PUT/DELETE /api/consumption/[bookId]/[consignmentNo]`, `POST /api/consumption/account` (mark one leaf accounted by consignment number alone), `POST /api/consumption/upsert` (assign/update without needing to know if the row exists yet) |
 | Alerts | `GET /api/alerts` (also triggers the throttled refresh) |
 | Diagnostics | `GET /api/test-db` (returns `SELECT NOW()`, used as a DB connectivity healthcheck) |
 
 Business rules enforced server-side (not just client-side):
 - Book numbers and leaf ranges are year-scoped (`leaf_year`); overlapping ranges within a year
   are rejected with 409.
-- `leaf_no` matching in the single-leaf routes is deliberately fuzzy — it matches on exact text,
-  trimmed text, or numeric-equivalent text (so `"05"` matches `"5"`), because leaf numbers can be
-  stored with or without a year prefix and with inconsistent padding.
+- `consignment_no` matching in the single-leaf routes is deliberately fuzzy — it matches on exact
+  text, trimmed text, or numeric-equivalent text (so `"05"` matches `"5"`), because consignment
+  numbers can be stored with or without a year prefix and with inconsistent padding.
 - Assigning a leaf (`user_id` set) flips the book to `book_status = "current"`,
   `in_floor = true`, and backfills `initial_assigned_date` if unset.
 - Every consumption write (`POST /api/consumption`, its `PUT`, `/upsert`, `/account`) calls
@@ -340,9 +340,9 @@ Per the README, the intended local flow is `docker compose up -d --build`, app a
   change result type" (happens after live schema changes on a long-lived connection), it
   disconnects and recreates the Prisma client once, then retries — a pragma to avoid restarting
   the app after migrations.
-- **Leaf numbers are strings, not integers**, and may carry a `"YYYY-"` prefix. Always go through
-  `parseLeafNo()` / `canonicalLeafNo()` / the SQL `leafNoPredicate()` helper rather than comparing
-  raw strings.
+- **Consignment numbers are strings, not integers**, and may carry a `"YYYY-"` prefix. Always go
+  through `parseConsignmentNo()` / `canonicalConsignmentNo()` / the SQL `consignmentNoPredicate()`
+  helper rather than comparing raw strings.
 - **No server-side authorization on most `/api/*` routes** — `middleware.ts` only gates page
   navigation (`/leafledger`), not the API itself. Any client with cookies (or without) can call
   the CRUD endpoints directly; the app currently relies on the SPA only being reachable through

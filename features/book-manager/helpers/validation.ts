@@ -25,10 +25,10 @@ export function findLeafOverlap(
     (b) =>
       b.id !== excludeBookId &&
       (b.leaf_year ?? null) === year &&
-      b.leaf_no_from !== null &&
-      b.leaf_no_to !== null &&
-      b.leaf_no_from <= to &&
-      from <= b.leaf_no_to
+      b.consignment_no_from !== null &&
+      b.consignment_no_to !== null &&
+      b.consignment_no_from <= to &&
+      from <= b.consignment_no_to
   )
 }
 
@@ -40,5 +40,5 @@ export function findLeafOverlap(
 export function effectiveLeafYear(apiBook: Book | undefined): number | null {
   if (!apiBook) return new Date().getFullYear()
   if (apiBook.leaf_year !== null) return apiBook.leaf_year
-  return apiBook.leaf_no_from === null ? new Date().getFullYear() : null
+  return apiBook.consignment_no_from === null ? new Date().getFullYear() : null
 }

@@ -46,7 +46,7 @@ export function AddLotForm({
           </FieldContent>
         </Field>
         <Field className="min-w-[120px] flex-1">
-          <FieldLabel htmlFor="lot-new-from">Book from</FieldLabel>
+          <FieldLabel htmlFor="lot-new-from">Book Serial from</FieldLabel>
           <FieldContent>
             <Input
               id="lot-new-from"
@@ -60,7 +60,7 @@ export function AddLotForm({
           </FieldContent>
         </Field>
         <Field className="min-w-[120px] flex-1">
-          <FieldLabel htmlFor="lot-new-to">Book to</FieldLabel>
+          <FieldLabel htmlFor="lot-new-to">Book Serial to</FieldLabel>
           <FieldContent>
             <Input
               id="lot-new-to"
