@@ -15,7 +15,7 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
   const [error, setError] = useState<string | null>(null)
 
   const [newName, setNewName] = useState("")
-  const [newRole, setNewRole] = useState("")
+  const [newRole, setNewRole] = useState("-")
   const [newOfficeIds, setNewOfficeIds] = useState<number[]>([])
 
   const [editOpen, setEditOpen] = useState(false)
@@ -31,16 +31,6 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
     return names.length > 0 ? names.join(", ") : "—"
   }
 
-  function toggleOfficeId(
-    id: number,
-    checked: boolean,
-    setIds: (update: (prev: number[]) => number[]) => void
-  ) {
-    setIds((prev) =>
-      checked ? [...prev, id] : prev.filter((existing) => existing !== id)
-    )
-  }
-
   function openEdit(e: Employee) {
     setEditId(e.id)
     setEditName(e.name)
@@ -52,9 +42,9 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
 
   async function handleAdd() {
     const name = newName.trim()
-    const role = newRole.trim()
-    if (!name || !role) {
-      setError("Name and role are required.")
+    const role = newRole.trim() || "-"
+    if (!name) {
+      setError("Name is required.")
       return
     }
     setBusy(true)
@@ -62,7 +52,7 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
     try {
       await createEmployee({ name, role, office_ids: newOfficeIds })
       setNewName("")
-      setNewRole("")
+      setNewRole("-")
       setNewOfficeIds([])
       await onReload()
     } catch (err) {
@@ -75,9 +65,9 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
   async function handleSaveEdit() {
     if (editId === null) return
     const name = editName.trim()
-    const role = editRole.trim()
-    if (!name || !role) {
-      setError("Name and role are required.")
+    const role = editRole.trim() || "-"
+    if (!name) {
+      setError("Name is required.")
       return
     }
     setBusy(true)
@@ -124,7 +114,6 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
     editOfficeIds,
     setEditOfficeIds,
     officeNames,
-    toggleOfficeId,
     openEdit,
     handleAdd,
     handleSaveEdit,

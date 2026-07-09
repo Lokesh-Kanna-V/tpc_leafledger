@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/shared/ui/button"
-import { Checkbox } from "@/shared/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -20,9 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table"
+import { cn } from "@/shared/lib/utils"
 import type { Employee } from "@/shared/services/employees.service"
 import type { Office } from "@/shared/services/offices.service"
 import { useEmployees } from "../hooks/use-employees"
+
+const OFFICE_SELECT_CLASS =
+  "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80"
 
 type EmployeesViewProps = {
   employees: Employee[]
@@ -53,7 +56,6 @@ export function EmployeesView({
     editOfficeIds,
     setEditOfficeIds,
     officeNames,
-    toggleOfficeId,
     openEdit,
     handleAdd,
     handleSaveEdit,
@@ -95,41 +97,41 @@ export function EmployeesView({
               />
             </FieldContent>
           </Field>
-          <Button type="button" disabled={busy} onClick={() => void handleAdd()}>
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => void handleAdd()}
+          >
             Add
           </Button>
         </div>
 
-        <Field className="mt-3">
-          <FieldLabel>
-            Offices <span className="text-muted-foreground">(optional)</span>
+        <Field className="mt-3 max-w-60">
+          <FieldLabel htmlFor="emp-new-office">
+            Office <span className="text-muted-foreground">(optional)</span>
           </FieldLabel>
           <FieldContent>
-            <div className="flex flex-wrap gap-4 rounded-md border border-input p-2">
-              {offices.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No offices yet. Add one in the Offices tab.
-                </p>
-              ) : (
-                offices.map((o) => (
-                  <div key={o.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`emp-new-office-${o.id}`}
-                      checked={newOfficeIds.includes(o.id)}
-                      onCheckedChange={(v) =>
-                        toggleOfficeId(o.id, v === true, setNewOfficeIds)
-                      }
-                    />
-                    <FieldLabel
-                      htmlFor={`emp-new-office-${o.id}`}
-                      className="font-normal"
-                    >
-                      {o.name}
-                    </FieldLabel>
-                  </div>
-                ))
-              )}
-            </div>
+            {offices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No offices yet. Add one in the Offices tab.
+              </p>
+            ) : (
+              <select
+                id="emp-new-office"
+                className={cn(OFFICE_SELECT_CLASS)}
+                value={newOfficeIds[0] !== undefined ? String(newOfficeIds[0]) : ""}
+                onChange={(e) =>
+                  setNewOfficeIds(e.target.value ? [Number(e.target.value)] : [])
+                }
+              >
+                <option value="">No office</option>
+                {offices.map((o) => (
+                  <option key={o.id} value={String(o.id)}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </FieldContent>
         </Field>
       </div>
@@ -213,36 +215,37 @@ export function EmployeesView({
               </FieldContent>
             </Field>
             <Field>
-              <FieldLabel>
-                Offices{" "}
-                <span className="text-muted-foreground">(optional)</span>
+              <FieldLabel htmlFor="emp-edit-office">
+                Office <span className="text-muted-foreground">(optional)</span>
               </FieldLabel>
               <FieldContent>
-                <div className="flex flex-wrap gap-4 rounded-md border border-input p-2">
-                  {offices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No offices yet. Add one in the Offices tab.
-                    </p>
-                  ) : (
-                    offices.map((o) => (
-                      <div key={o.id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`emp-edit-office-${o.id}`}
-                          checked={editOfficeIds.includes(o.id)}
-                          onCheckedChange={(v) =>
-                            toggleOfficeId(o.id, v === true, setEditOfficeIds)
-                          }
-                        />
-                        <FieldLabel
-                          htmlFor={`emp-edit-office-${o.id}`}
-                          className="font-normal"
-                        >
-                          {o.name}
-                        </FieldLabel>
-                      </div>
-                    ))
-                  )}
-                </div>
+                {offices.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No offices yet. Add one in the Offices tab.
+                  </p>
+                ) : (
+                  <select
+                    id="emp-edit-office"
+                    className={cn(OFFICE_SELECT_CLASS)}
+                    value={
+                      editOfficeIds[0] !== undefined
+                        ? String(editOfficeIds[0])
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setEditOfficeIds(
+                        e.target.value ? [Number(e.target.value)] : []
+                      )
+                    }
+                  >
+                    <option value="">No office</option>
+                    {offices.map((o) => (
+                      <option key={o.id} value={String(o.id)}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </FieldContent>
             </Field>
           </FieldGroup>
