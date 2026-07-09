@@ -69,6 +69,7 @@ export function useBookManager({
   const [assignNewBook, setAssignNewBook] = useState(false)
   const [accountDialogOpen, setAccountDialogOpen] = useState(false)
   const [accountLeafNo, setAccountLeafNo] = useState("")
+  const [accountLeafTo, setAccountLeafTo] = useState("")
   const accountLeafInputRef = useRef<HTMLInputElement | null>(null)
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -418,26 +419,44 @@ export function useBookManager({
     !assignErrors.assignBlocked
 
   const accountErrors = useMemo(() => {
-    const e: { leafNo?: string } = {}
+    const e: { leafNo?: string; leafTo?: string } = {}
     const raw = accountLeafNo.trim()
     if (!raw) {
       e.leafNo = "Leaf no. is required."
-      return e
+    } else {
+      const plainMatch = /^\d+$/.test(raw)
+      const yearPrefixedMatch = /^\d{4}-\d+$/.test(raw)
+      if (!plainMatch && !yearPrefixedMatch) {
+        e.leafNo = "Enter a leaf number, e.g. 5 or 2026-5."
+      } else {
+        const n = Number.parseInt(plainMatch ? raw : raw.split("-")[1], 10)
+        if (n < 1) e.leafNo = "Leaf no. must be at least 1."
+      }
     }
-    const plainMatch = /^\d+$/.test(raw)
-    const yearPrefixedMatch = /^\d{4}-\d+$/.test(raw)
-    if (!plainMatch && !yearPrefixedMatch) {
-      e.leafNo = "Enter a leaf number, e.g. 5 or 2026-5."
-      return e
-    }
-    const n = Number.parseInt(plainMatch ? raw : raw.split("-")[1], 10)
-    if (n < 1) {
-      e.leafNo = "Leaf no. must be at least 1."
-    }
-    return e
-  }, [accountLeafNo])
 
-  const canAccount = !accountErrors.leafNo
+    const toRaw = accountLeafTo.trim()
+    if (toRaw) {
+      if (!/^\d+$/.test(toRaw)) {
+        e.leafTo = "Enter a plain leaf number, e.g. 20."
+      } else if (!e.leafNo) {
+        const plainMatch = /^\d+$/.test(raw)
+        const fromNum = Number.parseInt(
+          plainMatch ? raw : raw.split("-")[1],
+          10
+        )
+        const toNum = Number.parseInt(toRaw, 10)
+        if (toNum < fromNum) {
+          e.leafTo = "Leaf no. to must be at or after leaf no. from."
+        } else if (toNum - fromNum + 1 > 200) {
+          e.leafTo = "Range too large — account at most 200 leaves at once."
+        }
+      }
+    }
+
+    return e
+  }, [accountLeafNo, accountLeafTo])
+
+  const canAccount = !accountErrors.leafNo && !accountErrors.leafTo
 
   const editErrors = useMemo(() => {
     const e: {
@@ -688,16 +707,57 @@ export function useBookManager({
 
   function resetAccountForm() {
     setAccountLeafNo("")
+    setAccountLeafTo("")
   }
 
-  async function accountSingleLeaf(): Promise<boolean> {
+  /** Accounts a single leaf, or every leaf from accountLeafNo through accountLeafTo
+   *  (inclusive) when a "to" value is given. Continues past individual failures
+   *  (e.g. a leaf with no consumption row) so one bad leaf doesn't block the rest. */
+  async function accountLeaves(): Promise<boolean> {
     if (!canAccount) return false
-    const key = accountLeafNo.trim()
+    const fromRaw = accountLeafNo.trim()
+    const toRaw = accountLeafTo.trim()
+
     setBusy(true)
     setAccountActionError(null)
     try {
-      await accountConsumptionLeaf(key)
+      if (!toRaw) {
+        await accountConsumptionLeaf(fromRaw)
+        await onReload()
+        return true
+      }
+
+      const plainMatch = /^\d+$/.test(fromRaw)
+      const prefix = plainMatch ? "" : `${fromRaw.split("-")[0]}-`
+      const fromNum = Number.parseInt(
+        plainMatch ? fromRaw : fromRaw.split("-")[1],
+        10
+      )
+      const toNum = Number.parseInt(toRaw, 10)
+
+      const failures: string[] = []
+      let successCount = 0
+      for (let L = fromNum; L <= toNum; L++) {
+        const leafKey = `${prefix}${L}`
+        try {
+          await accountConsumptionLeaf(leafKey)
+          successCount += 1
+        } catch (err) {
+          failures.push(
+            `${leafKey}: ${err instanceof Error ? err.message : "failed"}`
+          )
+        }
+      }
+
       await onReload()
+
+      if (failures.length > 0) {
+        const total = toNum - fromNum + 1
+        setAccountActionError(
+          `Accounted ${successCount} of ${total} leaf${total === 1 ? "" : "s"}.\n${failures.join("\n")}`
+        )
+        return false
+      }
       return true
     } catch (err) {
       setAccountActionError(
@@ -706,6 +766,39 @@ export function useBookManager({
       return false
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** Ensures a consumption row exists (unassigned) for every leaf in [from, to] on
+   *  this book, without touching leaves that already have a row. Setting a leaf
+   *  range (via Bulk Assign or Edit) must not leave leaves with no row at all —
+   *  otherwise accounting them later fails with "No consumption row for leaf". */
+  async function backfillConsumptionRange(
+    bookId: number,
+    leafPrefix: string,
+    from: number,
+    to: number,
+    today: string
+  ) {
+    const existingLeaves = new Set(
+      consumptions
+        .filter((c) => Number(c.book_id) === bookId)
+        .map((c) => parseLeafNo(c.leaf_no))
+    )
+    for (let L = from; L <= to; L++) {
+      if (existingLeaves.has(L)) continue
+      try {
+        await createConsumption({
+          book_id: bookId,
+          leaf_no: `${leafPrefix}${L}`,
+          user_id: null,
+          assigned_date: today,
+          accounted: false,
+          accounted_date: null,
+        })
+      } catch {
+        // Row already exists (race/legacy data) — nothing to backfill.
+      }
     }
   }
 
@@ -932,6 +1025,18 @@ export function useBookManager({
         in_floor: apiBook.in_floor,
       })
 
+      if (leafFromNum !== null && leafToNum !== null) {
+        const leafPrefix =
+          savedBook.leaf_year !== null ? `${savedBook.leaf_year}-` : ""
+        await backfillConsumptionRange(
+          editBookId,
+          leafPrefix,
+          leafFromNum,
+          leafToNum,
+          dateIsoLocal()
+        )
+      }
+
       if (editEmployeeId) {
         let empId: number
         if (editEmployeeId === "__new__") {
@@ -1054,6 +1159,14 @@ export function useBookManager({
         leaf_no_from: from,
         leaf_no_to: to,
       })
+      const leafPrefix = updated.leaf_year !== null ? `${updated.leaf_year}-` : ""
+      await backfillConsumptionRange(
+        updated.id,
+        leafPrefix,
+        from,
+        to,
+        dateIsoLocal()
+      )
       const overrides = {
         ...bulkLeafRangeOverridesRef.current,
         [updated.id]: updated,
@@ -1210,13 +1323,15 @@ export function useBookManager({
     setAccountDialogOpen,
     accountLeafNo,
     setAccountLeafNo,
+    accountLeafTo,
+    setAccountLeafTo,
     accountLeafInputRef,
     accountErrors,
     canAccount,
     accountActionError,
     setAccountActionError,
     resetAccountForm,
-    accountSingleLeaf,
+    accountLeaves,
 
     // edit book dialog
     editDialogOpen,

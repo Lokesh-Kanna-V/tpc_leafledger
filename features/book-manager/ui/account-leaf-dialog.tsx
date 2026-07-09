@@ -30,8 +30,10 @@ type AccountLeafDialogProps = {
   onOpenChange: (open: boolean) => void
   accountLeafNo: string
   onAccountLeafNoChange: (value: string) => void
+  accountLeafTo: string
+  onAccountLeafToChange: (value: string) => void
   accountLeafInputRef: RefObject<HTMLInputElement | null>
-  errors: { leafNo?: string }
+  errors: { leafNo?: string; leafTo?: string }
   canAccount: boolean
   busy: boolean
   accountActionError: string | null
@@ -45,6 +47,8 @@ export function AccountLeafDialog({
   onOpenChange,
   accountLeafNo,
   onAccountLeafNoChange,
+  accountLeafTo,
+  onAccountLeafToChange,
   accountLeafInputRef,
   errors,
   canAccount,
@@ -79,20 +83,26 @@ export function AccountLeafDialog({
         <DialogHeader>
           <DialogTitle>Account leaf</DialogTitle>
           <DialogDescription>
-            Enter one leaf number to mark that leaf accounted. It must
-            already exist in consumption and be assigned to someone.
+            Enter a leaf number, or a range, to mark leaves accounted. Each
+            leaf must already exist in consumption and be assigned to
+            someone.
           </DialogDescription>
         </DialogHeader>
 
         {accountActionError ? (
-          <p className="text-sm text-destructive" role="alert">
-            {accountActionError}
-          </p>
+          <div
+            className="max-h-32 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 p-2"
+            role="alert"
+          >
+            <p className="whitespace-pre-line text-sm text-destructive">
+              {accountActionError}
+            </p>
+          </div>
         ) : null}
 
         <FieldGroup>
           <Field data-invalid={!!errors.leafNo}>
-            <FieldLabel htmlFor="account-leaf-no">Leaf no.</FieldLabel>
+            <FieldLabel htmlFor="account-leaf-no">Leaf no. from</FieldLabel>
             <FieldContent>
               <Input
                 id="account-leaf-no"
@@ -109,6 +119,29 @@ export function AccountLeafDialog({
               </FieldDescription>
               <FieldError
                 errors={errors.leafNo ? [{ message: errors.leafNo }] : []}
+              />
+            </FieldContent>
+          </Field>
+
+          <Field data-invalid={!!errors.leafTo}>
+            <FieldLabel htmlFor="account-leaf-to">
+              Leaf no. to (optional)
+            </FieldLabel>
+            <FieldContent>
+              <Input
+                id="account-leaf-to"
+                placeholder="e.g. 20 — leave blank for a single leaf"
+                value={accountLeafTo}
+                onChange={(e) => onAccountLeafToChange(e.target.value)}
+                aria-invalid={!!errors.leafTo}
+                autoComplete="off"
+              />
+              <FieldDescription>
+                Set this to account every leaf from &quot;from&quot; through
+                this number in one go.
+              </FieldDescription>
+              <FieldError
+                errors={errors.leafTo ? [{ message: errors.leafTo }] : []}
               />
             </FieldContent>
           </Field>

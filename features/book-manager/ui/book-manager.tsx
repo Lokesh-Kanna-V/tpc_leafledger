@@ -139,6 +139,8 @@ export default function BookManager({
                 onOpenChange={bm.setAccountDialogOpen}
                 accountLeafNo={bm.accountLeafNo}
                 onAccountLeafNoChange={bm.setAccountLeafNo}
+                accountLeafTo={bm.accountLeafTo}
+                onAccountLeafToChange={bm.setAccountLeafTo}
                 accountLeafInputRef={bm.accountLeafInputRef}
                 errors={bm.accountErrors}
                 canAccount={bm.canAccount}
@@ -146,13 +148,13 @@ export default function BookManager({
                 accountActionError={bm.accountActionError}
                 onClearError={() => bm.setAccountActionError(null)}
                 onAccountAndClose={async () => {
-                  const ok = await bm.accountSingleLeaf()
+                  const ok = await bm.accountLeaves()
                   if (!ok) return
                   bm.resetAccountForm()
                   bm.setAccountDialogOpen(false)
                 }}
                 onAccountAnother={async () => {
-                  const ok = await bm.accountSingleLeaf()
+                  const ok = await bm.accountLeaves()
                   if (!ok) return
                   bm.resetAccountForm()
                   bm.setAccountDialogOpen(true)
