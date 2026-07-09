@@ -2,6 +2,7 @@
 
 import type { Office } from "@/shared/services/offices.service"
 import type { Employee } from "@/shared/services/employees.service"
+import { AdminConfirmDialog } from "@/shared/ui/admin-confirm-dialog"
 
 import type { Book } from "../services/books.service"
 import type { Consumption } from "../services/consumption.service"
@@ -56,6 +57,12 @@ export default function BookManager({
         />
       ) : (
         <>
+          {bm.deleteActionError ? (
+            <p className="mb-4 text-sm text-destructive" role="alert">
+              {bm.deleteActionError}
+            </p>
+          ) : null}
+
           <div className="mb-10 flex justify-between rounded-xl border border-gray-200 bg-gray-50 p-2">
             <div className="flex flex-wrap items-center gap-2">
               <AddBookDialog
@@ -277,7 +284,21 @@ export default function BookManager({
             onOpenDetail={(id) => bm.setDetailBookId(id)}
             onToggleInFloor={(row) => void bm.toggleInFloor(row)}
             onEdit={(row) => bm.openEditDialog(row)}
+            onDelete={(row) => void bm.deleteBookRow(row)}
             onPageChange={bm.setPage}
+          />
+
+          <AdminConfirmDialog
+            key={bm.pendingDeleteBookId ?? "closed"}
+            open={bm.deleteAdminOpen}
+            onOpenChange={bm.setDeleteAdminOpen}
+            title="Confirm deletion"
+            description="This book is assigned to an office or an employee. Enter an admin name and password to delete it (and its leaves) anyway."
+            busy={bm.busy}
+            error={bm.deleteAdminError}
+            onConfirm={(name, password) =>
+              void bm.confirmDeleteBookWithAdmin(name, password)
+            }
           />
         </>
       )}

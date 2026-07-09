@@ -24,6 +24,7 @@ type BooksTableProps = {
   onOpenDetail: (id: string) => void
   onToggleInFloor: (row: BookRow) => void
   onEdit: (row: BookRow) => void
+  onDelete: (row: BookRow) => void
   onPageChange: (updater: (p: number) => number) => void
 }
 
@@ -37,6 +38,7 @@ export function BooksTable({
   onOpenDetail,
   onToggleInFloor,
   onEdit,
+  onDelete,
   onPageChange,
 }: BooksTableProps) {
   return (
@@ -53,7 +55,7 @@ export function BooksTable({
             <TableHead className="w-[110px] text-center">
               Accounted
             </TableHead>
-            <TableHead className="w-[100px] text-right">Actions</TableHead>
+            <TableHead className="w-40 text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -122,18 +124,29 @@ export function BooksTable({
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={busy}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEdit(b)
-                    }}
+                  <div
+                    className="flex justify-end gap-2"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Edit
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => onEdit(b)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => onDelete(b)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))

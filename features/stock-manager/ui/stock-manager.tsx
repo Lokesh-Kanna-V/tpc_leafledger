@@ -2,6 +2,7 @@
 
 import { cn } from "@/shared/lib/utils"
 import { MONTH_OPTIONS } from "@/shared/config/constants"
+import { AdminConfirmDialog } from "@/shared/ui/admin-confirm-dialog"
 import type { Lot } from "../services/lots.service"
 import { useStockManager } from "../hooks/use-stock-manager"
 import { AddLotForm } from "./add-lot-form"
@@ -37,6 +38,11 @@ export default function StockManager({ lots, onReload }: StockManagerProps) {
     openEdit,
     handleSaveEdit,
     handleDelete,
+    deleteAdminOpen,
+    setDeleteAdminOpen,
+    deleteAdminError,
+    pendingDeleteLotId,
+    confirmDeleteLotWithAdmin,
   } = useStockManager(lots, onReload)
 
   return (
@@ -97,7 +103,7 @@ export default function StockManager({ lots, onReload }: StockManagerProps) {
         visibleLots={visibleLots}
         busy={busy}
         onEdit={openEdit}
-        onDelete={(id) => void handleDelete(id)}
+        onDelete={(id, lotNumber) => void handleDelete(id, lotNumber)}
       />
 
       <EditLotDialog
@@ -107,6 +113,19 @@ export default function StockManager({ lots, onReload }: StockManagerProps) {
         editLotNumber={editLotNumber}
         onLotNumberChange={setEditLotNumber}
         onSave={() => void handleSaveEdit()}
+      />
+
+      <AdminConfirmDialog
+        key={pendingDeleteLotId ?? "closed"}
+        open={deleteAdminOpen}
+        onOpenChange={setDeleteAdminOpen}
+        title="Confirm deletion"
+        description="This lot has books already assigned to an office or an employee. Enter an admin name and password to delete the lot (and those books and their leaves) anyway."
+        busy={busy}
+        error={deleteAdminError}
+        onConfirm={(name, password) =>
+          void confirmDeleteLotWithAdmin(name, password)
+        }
       />
     </div>
   )

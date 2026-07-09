@@ -1,3 +1,4 @@
+import { verifyAdminCredentials } from "@/lib/auth/verify-admin-credentials";
 import { query } from "@/lib/db";
 import { asInt, humanizePgError, jsonError, pgCode } from "@/lib/http";
 
@@ -58,7 +59,7 @@ export async function PUT(request, { params }) {
   }
 }
 
-export async function DELETE(_req, { params }) {
+export async function DELETE(request, { params }) {
   let id;
   try {
     id = asInt((await params).id);
@@ -66,7 +67,37 @@ export async function DELETE(_req, { params }) {
     return jsonError("Invalid id");
   }
 
-  // book.lot_number has ON DELETE SET NULL, so generated books are kept.
+  const lotRow = await query("SELECT lot_number FROM lot WHERE id = $1", [id]);
+  const lot = lotRow.rows[0];
+  if (!lot) return jsonError("Lot not found", 404);
+
+  // If any book this lot generated has already been assigned to an office
+  // or an employee, deleting the lot needs admin credentials — it cascades
+  // to delete those books (and their leaves), not just orphan them.
+  const assignedCheck = await query(
+    `SELECT EXISTS (
+       SELECT 1 FROM book b
+       WHERE b.lot_number = $1
+         AND (
+           b.office_id IS NOT NULL
+           OR EXISTS (SELECT 1 FROM consumption c WHERE c.book_id = b.id AND c.user_id IS NOT NULL)
+         )
+     ) AS assigned`,
+    [lot.lot_number],
+  );
+  if (assignedCheck.rows[0]?.assigned) {
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      // No body sent — treated as missing credentials below.
+    }
+    const verified = await verifyAdminCredentials(body?.admin_name, body?.admin_password);
+    if (!verified.ok) return jsonError(verified.message, 428);
+  }
+
+  // book.lot_number now has ON DELETE CASCADE: generated books, and their
+  // consumption rows (leaves) and alerts, are deleted along with the lot.
   const result = await query("DELETE FROM lot WHERE id = $1 RETURNING id", [id]);
   if (!result.rows[0]) return jsonError("Lot not found", 404);
   return Response.json({ ok: true });

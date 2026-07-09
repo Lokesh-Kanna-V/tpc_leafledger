@@ -1,3 +1,9 @@
+/** Re-entered admin name+password used to confirm deleting an assigned book or lot. */
+export type AdminCredentials = { name: string; password: string }
+
+/** Status a delete route returns when admin credentials are missing or wrong. */
+export const ADMIN_CONFIRM_REQUIRED_STATUS = 428
+
 /**
  * Thrown when a fetch to `/api/*` returns a non-OK status.
  * Message is taken from `{ error: string }` when the body includes it.

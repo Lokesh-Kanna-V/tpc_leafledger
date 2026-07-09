@@ -6,6 +6,10 @@ import type { Office } from "@/shared/services/offices.service"
 import type { Employee } from "@/shared/services/employees.service"
 import { createEmployee } from "@/shared/services/employees.service"
 import { dateIsoLocal } from "@/shared/lib/date"
+import {
+  ADMIN_CONFIRM_REQUIRED_STATUS,
+  ApiError,
+} from "@/shared/services/api-client"
 
 import type { Book } from "../services/books.service"
 import {
@@ -124,6 +128,17 @@ export function useBookManager({
     null
   )
   const [editActionError, setEditActionError] = useState<string | null>(null)
+
+  const [deleteActionError, setDeleteActionError] = useState<string | null>(
+    null
+  )
+  const [deleteAdminOpen, setDeleteAdminOpen] = useState(false)
+  const [deleteAdminError, setDeleteAdminError] = useState<string | null>(
+    null
+  )
+  const [pendingDeleteBookId, setPendingDeleteBookId] = useState<
+    number | null
+  >(null)
 
   /** When set, show per-leaf detail table for this book row id. */
   const [detailBookId, setDetailBookId] = useState<string | null>(null)
@@ -984,6 +999,57 @@ export function useBookManager({
     }
   }
 
+  /** Deletes a book (and, by DB cascade, its leaves). Books already assigned
+   *  to an office or an employee need admin credentials — the server rejects
+   *  with ADMIN_CONFIRM_REQUIRED_STATUS, which opens the admin-confirm dialog. */
+  async function deleteBookRow(row: BookRow) {
+    if (busy) return
+    const ok = window.confirm(
+      `Delete book ${row.bookNo}? This also deletes its leaves. This cannot be undone.`
+    )
+    if (!ok) return
+
+    setBusy(true)
+    setDeleteActionError(null)
+    try {
+      await deleteBook(row.dbId)
+      await onReload()
+    } catch (err) {
+      if (
+        err instanceof ApiError &&
+        err.status === ADMIN_CONFIRM_REQUIRED_STATUS
+      ) {
+        setPendingDeleteBookId(row.dbId)
+        setDeleteAdminError(null)
+        setDeleteAdminOpen(true)
+      } else {
+        setDeleteActionError(
+          err instanceof Error ? err.message : "Failed to delete book"
+        )
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function confirmDeleteBookWithAdmin(name: string, password: string) {
+    if (pendingDeleteBookId === null) return
+    setBusy(true)
+    setDeleteAdminError(null)
+    try {
+      await deleteBook(pendingDeleteBookId, { name, password })
+      setDeleteAdminOpen(false)
+      setPendingDeleteBookId(null)
+      await onReload()
+    } catch (err) {
+      setDeleteAdminError(
+        err instanceof Error ? err.message : "Failed to delete book"
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function openEditDialog(b: BookRow) {
     const apiBook = apiBooks.find((x) => x.id === b.dbId)
     if (!apiBook) return
@@ -1409,6 +1475,15 @@ export function useBookManager({
     isBookFullyAccounted,
     toggleInFloor,
     moveBookToStore,
+
+    deleteActionError,
+    setDeleteActionError,
+    deleteAdminOpen,
+    setDeleteAdminOpen,
+    deleteAdminError,
+    pendingDeleteBookId,
+    deleteBookRow,
+    confirmDeleteBookWithAdmin,
 
     busy,
   }

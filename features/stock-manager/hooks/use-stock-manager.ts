@@ -2,12 +2,24 @@
 
 import { useMemo, useState } from "react"
 
+import {
+  ADMIN_CONFIRM_REQUIRED_STATUS,
+  ApiError,
+} from "@/shared/services/api-client"
 import type { Lot } from "../services/lots.service"
 import { createLot, deleteLot, updateLot } from "../services/lots.service"
 
 export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [deleteAdminOpen, setDeleteAdminOpen] = useState(false)
+  const [deleteAdminError, setDeleteAdminError] = useState<string | null>(
+    null
+  )
+  const [pendingDeleteLotId, setPendingDeleteLotId] = useState<number | null>(
+    null
+  )
 
   const [newLotNumber, setNewLotNumber] = useState("")
   const [newFrom, setNewFrom] = useState("")
@@ -96,14 +108,51 @@ export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
     }
   }
 
-  async function handleDelete(id: number) {
+  /** Deletes a lot, which cascades to delete the books it generated (and
+   *  their leaves). If any of those books are assigned to an office or an
+   *  employee, the server requires admin credentials — it rejects with
+   *  ADMIN_CONFIRM_REQUIRED_STATUS, which opens the admin-confirm dialog. */
+  async function handleDelete(id: number, lotNumber: string) {
+    if (busy) return
+    const ok = window.confirm(
+      `Delete lot ${lotNumber}? This also deletes the books it generated (and their leaves). This cannot be undone.`
+    )
+    if (!ok) return
+
     setBusy(true)
     setError(null)
     try {
       await deleteLot(id)
       await onReload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete lot")
+      if (
+        err instanceof ApiError &&
+        err.status === ADMIN_CONFIRM_REQUIRED_STATUS
+      ) {
+        setPendingDeleteLotId(id)
+        setDeleteAdminError(null)
+        setDeleteAdminOpen(true)
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to delete lot")
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function confirmDeleteLotWithAdmin(name: string, password: string) {
+    if (pendingDeleteLotId === null) return
+    setBusy(true)
+    setDeleteAdminError(null)
+    try {
+      await deleteLot(pendingDeleteLotId, { name, password })
+      setDeleteAdminOpen(false)
+      setPendingDeleteLotId(null)
+      await onReload()
+    } catch (err) {
+      setDeleteAdminError(
+        err instanceof Error ? err.message : "Failed to delete lot"
+      )
     } finally {
       setBusy(false)
     }
@@ -132,5 +181,11 @@ export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
     openEdit,
     handleSaveEdit,
     handleDelete,
+
+    deleteAdminOpen,
+    setDeleteAdminOpen,
+    deleteAdminError,
+    pendingDeleteLotId,
+    confirmDeleteLotWithAdmin,
   }
 }

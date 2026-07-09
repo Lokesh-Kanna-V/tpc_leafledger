@@ -1,3 +1,4 @@
+import type { AdminCredentials } from "@/shared/services/api-client"
 import { parseResponse } from "@/shared/services/api-client"
 
 export type Lot = {
@@ -59,9 +60,24 @@ export async function updateLot(id: number, body: UpdateLotInput): Promise<Lot> 
 /**
  * DELETE /api/lots/[id]
  *
- * Removes the lot; generated books are kept but their lot_number is cleared.
+ * Removes the lot and cascades to delete the books it generated (and their
+ * leaves). If any of those books are assigned to an office or an employee,
+ * the server requires admin credentials — pass them once the caller has
+ * them (see ADMIN_CONFIRM_REQUIRED_STATUS in shared/services/api-client).
  */
-export async function deleteLot(id: number): Promise<{ ok: true }> {
-  const response = await fetch(`/api/lots/${id}`, { method: "DELETE" })
+export async function deleteLot(
+  id: number,
+  adminCredentials?: AdminCredentials
+): Promise<{ ok: true }> {
+  const response = await fetch(`/api/lots/${id}`, {
+    method: "DELETE",
+    headers: adminCredentials ? { "Content-Type": "application/json" } : undefined,
+    body: adminCredentials
+      ? JSON.stringify({
+          admin_name: adminCredentials.name,
+          admin_password: adminCredentials.password,
+        })
+      : undefined,
+  })
   return parseResponse<{ ok: true }>(response)
 }

@@ -17,7 +17,7 @@ type LotsTableProps = {
   visibleLots: Lot[]
   busy: boolean
   onEdit: (lot: Lot) => void
-  onDelete: (id: number) => void
+  onDelete: (id: number, lotNumber: string) => void
 }
 
 export function LotsTable({
@@ -76,7 +76,7 @@ export function LotsTable({
                     size="sm"
                     type="button"
                     disabled={busy}
-                    onClick={() => onDelete(lot.id)}
+                    onClick={() => onDelete(lot.id, lot.lot_number)}
                   >
                     Delete
                   </Button>

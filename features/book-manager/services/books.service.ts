@@ -1,3 +1,4 @@
+import type { AdminCredentials } from "@/shared/services/api-client"
 import { parseResponse } from "@/shared/services/api-client"
 
 export type BookStatus = "current" | "completed" | "store"
@@ -95,8 +96,24 @@ export async function updateBook(
 
 /**
  * DELETE /api/books/[id]
+ *
+ * If the book is assigned to an office or an employee, the server requires
+ * admin credentials — pass them once the caller has them (see
+ * ADMIN_CONFIRM_REQUIRED_STATUS in shared/services/api-client).
  */
-export async function deleteBook(id: number): Promise<{ ok: true }> {
-  const response = await fetch(`/api/books/${id}`, { method: "DELETE" })
+export async function deleteBook(
+  id: number,
+  adminCredentials?: AdminCredentials
+): Promise<{ ok: true }> {
+  const response = await fetch(`/api/books/${id}`, {
+    method: "DELETE",
+    headers: adminCredentials ? { "Content-Type": "application/json" } : undefined,
+    body: adminCredentials
+      ? JSON.stringify({
+          admin_name: adminCredentials.name,
+          admin_password: adminCredentials.password,
+        })
+      : undefined,
+  })
   return parseResponse<{ ok: true }>(response)
 }

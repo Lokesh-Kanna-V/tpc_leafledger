@@ -1,3 +1,4 @@
+import { verifyAdminCredentials } from "@/lib/auth/verify-admin-credentials";
 import { query } from "@/lib/db";
 import { asInt, humanizePgError, jsonError, pgCode } from "@/lib/http";
 
@@ -144,7 +145,7 @@ export async function PUT(request, { params }) {
   }
 }
 
-export async function DELETE(_req, { params }) {
+export async function DELETE(request, { params }) {
   let id;
   try {
     id = asInt((await params).id);
@@ -152,6 +153,31 @@ export async function DELETE(_req, { params }) {
     return jsonError("Invalid id");
   }
 
+  const assignedCheck = await query(
+    `SELECT (
+       b.office_id IS NOT NULL
+       OR EXISTS (SELECT 1 FROM consumption c WHERE c.book_id = b.id AND c.user_id IS NOT NULL)
+     ) AS assigned
+     FROM book b WHERE b.id = $1`,
+    [id],
+  );
+  const bookRow = assignedCheck.rows[0];
+  if (!bookRow) return jsonError("Book not found", 404);
+
+  // Books already assigned to an office or an employee need admin
+  // credentials to delete, so accidental clicks can't destroy leaf history.
+  if (bookRow.assigned) {
+    let body = {};
+    try {
+      body = await request.json();
+    } catch {
+      // No body sent — treated as missing credentials below.
+    }
+    const verified = await verifyAdminCredentials(body?.admin_name, body?.admin_password);
+    if (!verified.ok) return jsonError(verified.message, 428);
+  }
+
+  // Deleting a book cascades to delete its consumption rows (leaves) and alerts.
   const result = await query("DELETE FROM book WHERE id = $1 RETURNING id", [id]);
   if (!result.rows[0]) return jsonError("Book not found", 404);
   return Response.json({ ok: true });

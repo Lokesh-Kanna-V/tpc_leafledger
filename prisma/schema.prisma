@@ -62,7 +62,7 @@ model Book {
   book_status            BookStatus
   in_floor               Boolean    @default(false)
   lot_number             String?
-  lot                    Lot?       @relation(fields: [lot_number], references: [lot_number])
+  lot                    Lot?       @relation(fields: [lot_number], references: [lot_number], onDelete: Cascade)
   consumptions           Consumption[]
   alerts                 Alert[]
 
