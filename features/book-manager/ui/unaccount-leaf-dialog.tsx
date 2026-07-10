@@ -1,6 +1,6 @@
 "use client"
 
-import type { RefObject } from "react"
+import { useState, type RefObject } from "react"
 import { EqualNotIcon } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
@@ -58,18 +58,31 @@ export function UnaccountLeafDialog({
   onUnaccountAndClose,
   onUnaccountAnother,
 }: UnaccountLeafDialogProps) {
+  const [pendingAction, setPendingAction] = useState<"close" | "another" | null>(
+    null
+  )
+
+  const rangeLabel = unaccountLeafTo.trim()
+    ? `${unaccountConsignmentNo.trim()} through ${unaccountLeafTo.trim()}`
+    : unaccountConsignmentNo.trim()
+
   return (
     <Dialog
       open={open}
       onOpenChange={(o) => {
         onOpenChange(o)
         if (o) onClearError()
+        setPendingAction(null)
       }}
     >
       <Tooltip>
         <TooltipTrigger asChild>
           <DialogTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="Unaccount leaf">
+            <Button
+              variant="destructive"
+              size="icon"
+              aria-label="Unaccount leaf"
+            >
               <EqualNotIcon />
             </Button>
           </DialogTrigger>
@@ -149,34 +162,75 @@ export function UnaccountLeafDialog({
           </Field>
         </FieldGroup>
 
-        <DialogFooter className="sm:justify-between">
-          <DialogClose asChild>
-            <Button variant="outline" type="button">
-              Close
-            </Button>
-          </DialogClose>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              disabled={!canUnaccount || busy}
-              onClick={onUnaccountAndClose}
-            >
-              Unaccount and close
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!canUnaccount || busy}
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onUnaccountAnother()
-              }}
-            >
-              Unaccount another
-            </Button>
+        {pendingAction ? (
+          <div
+            className="rounded-md border border-destructive/30 bg-destructive/5 p-3"
+            role="alert"
+          >
+            <p className="text-sm text-destructive">
+              Confirm: mark consignment <strong>{rangeLabel}</strong> as not
+              accounted? This can be redone by accounting the leaves again,
+              but double-check the range first.
+            </p>
           </div>
+        ) : null}
+
+        <DialogFooter className="sm:justify-between">
+          {pendingAction ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPendingAction(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={busy}
+                onClick={() => {
+                  const action = pendingAction
+                  setPendingAction(null)
+                  if (action === "close") onUnaccountAndClose()
+                  else onUnaccountAnother()
+                }}
+              >
+                Yes, unaccount
+              </Button>
+            </>
+          ) : (
+            <>
+              <DialogClose asChild>
+                <Button variant="outline" type="button">
+                  Close
+                </Button>
+              </DialogClose>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={!canUnaccount || busy}
+                  onClick={() => setPendingAction("close")}
+                >
+                  Unaccount and close
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!canUnaccount || busy}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setPendingAction("another")
+                  }}
+                >
+                  Unaccount another
+                </Button>
+              </div>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
