@@ -296,7 +296,10 @@ export function useBookManager({
   )
 
   const employeesSortedForAssign = useMemo(
-    () => [...employees].sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      [...employees]
+        .filter((e) => e.role?.trim().toLowerCase() !== "developer")
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [employees]
   )
 

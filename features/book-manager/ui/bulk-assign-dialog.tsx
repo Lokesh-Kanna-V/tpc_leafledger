@@ -254,7 +254,7 @@ export function BulkAssignDialog({
                         {emp.name} ({emp.role})
                       </option>
                     ))}
-                    <option value="__new__">+ Add new employee…</option>
+                    {/* <option value="__new__">+ Add new employee…</option> */}
                   </select>
                   <FieldError
                     errors={

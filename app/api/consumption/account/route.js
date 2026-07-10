@@ -13,6 +13,11 @@ function consignmentNoPredicate(leafParam) {
       AND trim($${leafParam}::text) ~ '^-?[0-9]+$'
       AND trim(consignment_no::text)::bigint = trim($${leafParam}::text)::bigint
     )
+    OR (
+      trim($${leafParam}::text) ~ '^[0-9]+$'
+      AND trim(consignment_no::text) ~ '^[0-9]{4}-[0-9]+$'
+      AND split_part(trim(consignment_no::text), '-', 2)::bigint = trim($${leafParam}::text)::bigint
+    )
   )`;
 }
 
