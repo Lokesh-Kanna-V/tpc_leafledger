@@ -12,6 +12,7 @@ import { BookDetailView } from "./book-detail-view"
 import { AddBookDialog } from "./add-book-dialog"
 import { AssignBookDialog } from "./assign-book-dialog"
 import { AccountLeafDialog } from "./account-leaf-dialog"
+import { UnaccountLeafDialog } from "./unaccount-leaf-dialog"
 import { BulkAssignDialog } from "./bulk-assign-dialog"
 import { EditBookDialog } from "./edit-book-dialog"
 import {
@@ -208,6 +209,36 @@ export default function BookManager({
                 busy={bm.busy}
                 onNext={() => void bm.startBulkAssign()}
                 onSaveLeafRange={() => void bm.saveBulkLeafRangeForCurrentBook()}
+              />
+
+              <UnaccountLeafDialog
+                open={bm.unaccountDialogOpen}
+                onOpenChange={bm.setUnaccountDialogOpen}
+                unaccountConsignmentNo={bm.unaccountConsignmentNo}
+                onUnaccountConsignmentNoChange={bm.setUnaccountConsignmentNo}
+                unaccountLeafTo={bm.unaccountLeafTo}
+                onUnaccountLeafToChange={bm.setUnaccountLeafTo}
+                unaccountLeafInputRef={bm.unaccountLeafInputRef}
+                errors={bm.unaccountErrors}
+                canUnaccount={bm.canUnaccount}
+                busy={bm.busy}
+                unaccountActionError={bm.unaccountActionError}
+                onClearError={() => bm.setUnaccountActionError(null)}
+                onUnaccountAndClose={async () => {
+                  const ok = await bm.unaccountLeaves()
+                  if (!ok) return
+                  bm.resetUnaccountForm()
+                  bm.setUnaccountDialogOpen(false)
+                }}
+                onUnaccountAnother={async () => {
+                  const ok = await bm.unaccountLeaves()
+                  if (!ok) return
+                  bm.resetUnaccountForm()
+                  bm.setUnaccountDialogOpen(true)
+                  requestAnimationFrame(() => {
+                    bm.unaccountLeafInputRef.current?.focus()
+                  })
+                }}
               />
 
               <BooksSearchFilters

@@ -22,6 +22,7 @@ import type { Consumption } from "../services/consumption.service"
 import {
   accountConsumptionLeaf,
   createConsumption,
+  unaccountConsumptionLeaf,
   upsertConsumptionAssignment,
 } from "../services/consumption.service"
 import type { BookRow, BookStatus } from "../types"
@@ -76,6 +77,11 @@ export function useBookManager({
   const [accountLeafTo, setAccountLeafTo] = useState("")
   const accountLeafInputRef = useRef<HTMLInputElement | null>(null)
 
+  const [unaccountDialogOpen, setUnaccountDialogOpen] = useState(false)
+  const [unaccountConsignmentNo, setUnaccountConsignmentNo] = useState("")
+  const [unaccountLeafTo, setUnaccountLeafTo] = useState("")
+  const unaccountLeafInputRef = useRef<HTMLInputElement | null>(null)
+
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editBookId, setEditBookId] = useState<number | null>(null)
   const [editBookNo, setEditBookNo] = useState("")
@@ -127,6 +133,9 @@ export function useBookManager({
   const [accountActionError, setAccountActionError] = useState<string | null>(
     null
   )
+  const [unaccountActionError, setUnaccountActionError] = useState<
+    string | null
+  >(null)
   const [editActionError, setEditActionError] = useState<string | null>(null)
 
   const [deleteActionError, setDeleteActionError] = useState<string | null>(
@@ -476,6 +485,47 @@ export function useBookManager({
 
   const canAccount = !accountErrors.consignmentNo && !accountErrors.leafTo
 
+  const unaccountErrors = useMemo(() => {
+    const e: { consignmentNo?: string; leafTo?: string } = {}
+    const raw = unaccountConsignmentNo.trim()
+    if (!raw) {
+      e.consignmentNo = "Consignment no. is required."
+    } else {
+      const plainMatch = /^\d+$/.test(raw)
+      const yearPrefixedMatch = /^\d{4}-\d+$/.test(raw)
+      if (!plainMatch && !yearPrefixedMatch) {
+        e.consignmentNo = "Enter a consignment number, e.g. 5 or 2026-5."
+      } else {
+        const n = Number.parseInt(plainMatch ? raw : raw.split("-")[1], 10)
+        if (n < 1) e.consignmentNo = "Consignment no. must be at least 1."
+      }
+    }
+
+    const toRaw = unaccountLeafTo.trim()
+    if (toRaw) {
+      if (!/^\d+$/.test(toRaw)) {
+        e.leafTo = "Enter a plain consignment number, e.g. 20."
+      } else if (!e.consignmentNo) {
+        const plainMatch = /^\d+$/.test(raw)
+        const fromNum = Number.parseInt(
+          plainMatch ? raw : raw.split("-")[1],
+          10
+        )
+        const toNum = Number.parseInt(toRaw, 10)
+        if (toNum < fromNum) {
+          e.leafTo = "Consignment no. to must be at or after consignment no. from."
+        } else if (toNum - fromNum + 1 > 200) {
+          e.leafTo = "Range too large — unaccount at most 200 leaves at once."
+        }
+      }
+    }
+
+    return e
+  }, [unaccountConsignmentNo, unaccountLeafTo])
+
+  const canUnaccount =
+    !unaccountErrors.consignmentNo && !unaccountErrors.leafTo
+
   const editErrors = useMemo(() => {
     const e: {
       bookNo?: string
@@ -780,6 +830,70 @@ export function useBookManager({
     } catch (err) {
       setAccountActionError(
         err instanceof Error ? err.message : "Accounting failed"
+      )
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function resetUnaccountForm() {
+    setUnaccountConsignmentNo("")
+    setUnaccountLeafTo("")
+  }
+
+  /** Unaccounts a single leaf, or every leaf from unaccountConsignmentNo through
+   *  unaccountLeafTo (inclusive) when a "to" value is given. Continues past
+   *  individual failures so one bad leaf doesn't block the rest. */
+  async function unaccountLeaves(): Promise<boolean> {
+    if (!canUnaccount) return false
+    const fromRaw = unaccountConsignmentNo.trim()
+    const toRaw = unaccountLeafTo.trim()
+
+    setBusy(true)
+    setUnaccountActionError(null)
+    try {
+      if (!toRaw) {
+        await unaccountConsumptionLeaf(fromRaw)
+        await onReload()
+        return true
+      }
+
+      const plainMatch = /^\d+$/.test(fromRaw)
+      const prefix = plainMatch ? "" : `${fromRaw.split("-")[0]}-`
+      const fromNum = Number.parseInt(
+        plainMatch ? fromRaw : fromRaw.split("-")[1],
+        10
+      )
+      const toNum = Number.parseInt(toRaw, 10)
+
+      const failures: string[] = []
+      let successCount = 0
+      for (let L = fromNum; L <= toNum; L++) {
+        const leafKey = `${prefix}${L}`
+        try {
+          await unaccountConsumptionLeaf(leafKey)
+          successCount += 1
+        } catch (err) {
+          failures.push(
+            `${leafKey}: ${err instanceof Error ? err.message : "failed"}`
+          )
+        }
+      }
+
+      await onReload()
+
+      if (failures.length > 0) {
+        const total = toNum - fromNum + 1
+        setUnaccountActionError(
+          `Unaccounted ${successCount} of ${total} leaf${total === 1 ? "" : "s"}.\n${failures.join("\n")}`
+        )
+        return false
+      }
+      return true
+    } catch (err) {
+      setUnaccountActionError(
+        err instanceof Error ? err.message : "Unaccounting failed"
       )
       return false
     } finally {
@@ -1401,6 +1515,21 @@ export function useBookManager({
     setAccountActionError,
     resetAccountForm,
     accountLeaves,
+
+    // unaccount leaf dialog
+    unaccountDialogOpen,
+    setUnaccountDialogOpen,
+    unaccountConsignmentNo,
+    setUnaccountConsignmentNo,
+    unaccountLeafTo,
+    setUnaccountLeafTo,
+    unaccountLeafInputRef,
+    unaccountErrors,
+    canUnaccount,
+    unaccountActionError,
+    setUnaccountActionError,
+    resetUnaccountForm,
+    unaccountLeaves,
 
     // edit book dialog
     editDialogOpen,

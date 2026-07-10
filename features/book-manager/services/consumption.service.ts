@@ -105,6 +105,17 @@ export async function accountConsumptionLeaf(consignmentNo: string): Promise<Con
   return parseResponse<Consumption>(response)
 }
 
+/** Mark one leaf not accounted; resolves row in the database by consignment_no only. */
+export async function unaccountConsumptionLeaf(consignmentNo: string): Promise<Consumption> {
+  const key = canonicalConsignmentNo(consignmentNo)
+  const response = await fetch("/api/consumption/unaccount", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ consignment_no: key }),
+  })
+  return parseResponse<Consumption>(response)
+}
+
 /** Assign/update one leaf without relying on POST 409 + PUT (legacy rows may not match PUT filters). */
 export async function upsertConsumptionAssignment(
   bookId: number,
