@@ -58,9 +58,9 @@ export function UnaccountLeafDialog({
   onUnaccountAndClose,
   onUnaccountAnother,
 }: UnaccountLeafDialogProps) {
-  const [pendingAction, setPendingAction] = useState<"close" | "another" | null>(
-    null
-  )
+  const [pendingAction, setPendingAction] = useState<
+    "close" | "another" | null
+  >(null)
 
   const rangeLabel = unaccountLeafTo.trim()
     ? `${unaccountConsignmentNo.trim()} through ${unaccountLeafTo.trim()}`
@@ -97,8 +97,8 @@ export function UnaccountLeafDialog({
           <DialogTitle>Unaccount leaf</DialogTitle>
           <DialogDescription>
             Enter a consignment number, or a range, to mark leaves as not
-            accounted. Each leaf must already exist in consumption and
-            currently be accounted.
+            accounted. Each leaf must already exist in consumption and currently
+            be accounted.
           </DialogDescription>
         </DialogHeader>
 
@@ -107,7 +107,7 @@ export function UnaccountLeafDialog({
             className="max-h-32 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 p-2"
             role="alert"
           >
-            <p className="whitespace-pre-line text-sm text-destructive">
+            <p className="text-sm whitespace-pre-line text-destructive">
               {unaccountActionError}
             </p>
           </div>
@@ -133,7 +133,11 @@ export function UnaccountLeafDialog({
                 consignment number.
               </FieldDescription>
               <FieldError
-                errors={errors.consignmentNo ? [{ message: errors.consignmentNo }] : []}
+                errors={
+                  errors.consignmentNo
+                    ? [{ message: errors.consignmentNo }]
+                    : []
+                }
               />
             </FieldContent>
           </Field>
@@ -168,9 +172,8 @@ export function UnaccountLeafDialog({
             role="alert"
           >
             <p className="text-sm text-destructive">
-              Confirm: mark consignment <strong>{rangeLabel}</strong> as not
-              accounted? This can be redone by accounting the leaves again,
-              but double-check the range first.
+              Confirm: Mark consignment <strong>{rangeLabel}</strong> as not
+              accounted?
             </p>
           </div>
         ) : null}

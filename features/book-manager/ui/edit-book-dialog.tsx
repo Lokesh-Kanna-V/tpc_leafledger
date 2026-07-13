@@ -198,7 +198,7 @@ export function EditBookDialog({
                     {emp.name}
                   </option>
                 ))}
-                <option value="__new__">+ Add new employee…</option>
+                {/* <option value="__new__">+ Add new employee…</option> */}
               </select>
               <FieldDescription>
                 Assigns this book&rsquo;s remaining unaccounted leaves to the
