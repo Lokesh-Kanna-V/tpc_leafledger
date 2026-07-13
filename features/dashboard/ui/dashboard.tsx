@@ -47,6 +47,14 @@ export default function Dashboard({
     const storeBooks = books.filter(
       (b) => String(b.bookStatus ?? "").toLowerCase() === "store" && !b.inFloor
     )
+    // Accounting progress spans books that are in use or fully accounted —
+    // a book moves from "current" to "completed" the moment its last leaf is
+    // accounted, so excluding "completed" here would zero it out right when
+    // it finishes.
+    const accountingBooks = books.filter((b) => {
+      const status = String(b.bookStatus ?? "").toLowerCase()
+      return status === "current" || status === "completed"
+    })
 
     const total = books.length
 
@@ -57,20 +65,25 @@ export default function Dashboard({
       0
     )
 
-    const accountedCurrentLeaves = currentBooks.reduce(
+    const totalAccountingLeaves = accountingBooks.reduce(
+      (sum, b) => sum + b.leafCount,
+      0
+    )
+
+    const accountedCurrentLeaves = accountingBooks.reduce(
       (sum, b) => sum + b.accountedLeafCount,
       0
     )
     const unaccountedCurrentLeaves = Math.max(
       0,
-      totalCurrentLeaves - accountedCurrentLeaves
+      totalAccountingLeaves - accountedCurrentLeaves
     )
 
-    const accountedPct = totalCurrentLeaves
-      ? Math.round((accountedCurrentLeaves / totalCurrentLeaves) * 100)
+    const accountedPct = totalAccountingLeaves
+      ? Math.round((accountedCurrentLeaves / totalAccountingLeaves) * 100)
       : 0
 
-    const accountedBooks = books.filter(isBookAccounted).length
+    const accountedBooks = accountingBooks.filter(isBookAccounted).length
     const unaccountedBooks = total - accountedBooks
 
     const currentBookCount = currentBooks.length
@@ -79,14 +92,10 @@ export default function Dashboard({
       ? Math.round((totalLeavesAllBooks / total) * 10) / 10
       : 0
 
-    const storedBookLeaves = storeBooks.reduce(
-      (sum, b) => sum + b.leafCount,
-      0
-    )
+    const storedBookLeaves = storeBooks.reduce((sum, b) => sum + b.leafCount, 0)
 
     const inFloorBooks = books.filter(
-      (b) =>
-        b.inFloor && String(b.bookStatus ?? "").toLowerCase() === "store"
+      (b) => b.inFloor && String(b.bookStatus ?? "").toLowerCase() === "store"
     )
     const inFloorCount = inFloorBooks.length
     const inFloorLeaves = inFloorBooks.reduce((sum, b) => sum + b.leafCount, 0)
@@ -120,6 +129,7 @@ export default function Dashboard({
       avgLeaves: avgLeavesPerBook,
       accountedLeaves: accountedCurrentLeaves,
       unaccountedLeaves: unaccountedCurrentLeaves,
+      totalAccountingLeaves,
       accountedPct,
       accountedBooks,
       unaccountedBooks,
@@ -175,7 +185,8 @@ export default function Dashboard({
               {dashboard.inFloorCount}
             </div>
             <div className="mt-1 text-sm text-muted-foreground tabular-nums">
-              {dashboard.inFloorLeaves} leaves • avg {dashboard.inFloorAvgLeaves}
+              {dashboard.inFloorLeaves} leaves • avg{" "}
+              {dashboard.inFloorAvgLeaves}
               /book
             </div>
           </CardContent>
@@ -205,14 +216,15 @@ export default function Dashboard({
               Accounted
               <BookCheckIcon className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
-            <CardDescription>Leaves accounted</CardDescription>
+            <CardDescription>Books accounted</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-semibold tabular-nums">
-              {dashboard.accountedLeaves}
+              {dashboard.accountedBooks}
             </div>
             <div className="mt-1 text-sm text-muted-foreground tabular-nums">
-              {dashboard.unaccountedLeaves} leaves pending
+              {/* {dashboard.accountedLeaves} of {dashboard.totalAccountingLeaves} leaves accounted */}
+              {dashboard.accountedLeaves} leaves accounted
             </div>
           </CardContent>
         </Card>
