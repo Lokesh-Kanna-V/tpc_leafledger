@@ -72,7 +72,7 @@ export function LoginForm({
                 />
               </Field>
               <Field>
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" loading={pending}>
                   {pending ? "Signing in…" : "Login"}
                 </Button>
               </Field>

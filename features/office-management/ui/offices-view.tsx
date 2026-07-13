@@ -84,7 +84,7 @@ export function OfficesView({ offices, onReload }: OfficesViewProps) {
               />
             </FieldContent>
           </Field>
-          <Button type="button" disabled={busy} onClick={() => void handleAdd()}>
+          <Button type="button" loading={busy} onClick={() => void handleAdd()}>
             Add
           </Button>
         </div>
@@ -127,7 +127,7 @@ export function OfficesView({ offices, onReload }: OfficesViewProps) {
                       variant="destructive"
                       size="sm"
                       type="button"
-                      disabled={busy}
+                      loading={busy}
                       onClick={() => void handleDelete(o.id)}
                     >
                       Delete
@@ -180,7 +180,7 @@ export function OfficesView({ offices, onReload }: OfficesViewProps) {
             </DialogClose>
             <Button
               type="button"
-              disabled={busy}
+              loading={busy}
               onClick={() => void handleSaveEdit()}
             >
               Save

@@ -141,7 +141,7 @@ export function BooksTable({
                       type="button"
                       variant="destructive"
                       size="sm"
-                      disabled={busy}
+                      loading={busy}
                       onClick={() => onDelete(b)}
                     >
                       Delete

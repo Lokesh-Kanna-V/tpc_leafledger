@@ -3,6 +3,7 @@
 import { useState } from "react"
 
 import { ApiError } from "@/shared/services/api-client"
+import { toast } from "@/shared/hooks/use-toast"
 import { signup } from "../services/auth.service"
 
 export function useSignupForm() {
@@ -31,11 +32,11 @@ export function useSignupForm() {
         role: role.trim(),
         password,
       })
-      setSuccess(
-        `Account created for ${data.employee.name}. You can sign in if your role is admin.`
-      )
+      const successMessage = `Account created for ${data.employee.name}. You can sign in if your role is admin.`
+      setSuccess(successMessage)
       setPassword("")
       setConfirm("")
+      toast({ title: "Account created", description: successMessage, variant: "success" })
     } catch (err) {
       const message =
         err instanceof ApiError
@@ -44,6 +45,7 @@ export function useSignupForm() {
             ? err.message
             : "Something went wrong"
       setError(message)
+      toast({ title: "Signup failed", description: message, variant: "destructive" })
     } finally {
       setPending(false)
     }

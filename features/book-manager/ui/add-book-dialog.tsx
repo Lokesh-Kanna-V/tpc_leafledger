@@ -259,7 +259,8 @@ export function AddBookDialog({
           <div className="flex gap-2">
             <Button
               type="button"
-              disabled={!canAdd || busy}
+              disabled={!canAdd}
+              loading={busy}
               onClick={onAddAndClose}
             >
               Add and close
@@ -267,7 +268,8 @@ export function AddBookDialog({
             <Button
               type="button"
               variant="secondary"
-              disabled={!canAdd || busy}
+              disabled={!canAdd}
+              loading={busy}
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()

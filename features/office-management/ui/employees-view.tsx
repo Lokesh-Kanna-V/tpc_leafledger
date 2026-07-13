@@ -99,7 +99,7 @@ export function EmployeesView({
           </Field>
           <Button
             type="button"
-            disabled={busy}
+            loading={busy}
             onClick={() => void handleAdd()}
           >
             Add
@@ -173,7 +173,7 @@ export function EmployeesView({
                       variant="destructive"
                       size="sm"
                       type="button"
-                      disabled={busy}
+                      loading={busy}
                       onClick={() => void handleDelete(e.id)}
                     >
                       Delete
@@ -257,7 +257,7 @@ export function EmployeesView({
             </DialogClose>
             <Button
               type="button"
-              disabled={busy}
+              loading={busy}
               onClick={() => void handleSaveEdit()}
             >
               Save

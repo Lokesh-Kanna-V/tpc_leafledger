@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { BookOpenIcon, BoxesIcon, Building2Icon, BellIcon } from "lucide-react"
 
+import { toast } from "@/shared/hooks/use-toast"
+
 import { Dashboard } from "@/features/dashboard"
 import { BookManager } from "@/features/book-manager"
 import { StockManager } from "@/features/stock-manager"
@@ -39,6 +41,9 @@ export function AppShell() {
         credentials: "same-origin",
       })
       window.location.href = "/"
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong"
+      toast({ title: "Logout failed", description: message, variant: "destructive" })
     } finally {
       setLogoutBusy(false)
     }

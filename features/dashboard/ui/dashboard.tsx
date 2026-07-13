@@ -224,7 +224,7 @@ export default function Dashboard({
             </div>
             <div className="mt-1 text-sm text-muted-foreground tabular-nums">
               {/* {dashboard.accountedLeaves} of {dashboard.totalAccountingLeaves} leaves accounted */}
-              {dashboard.accountedLeaves} leaves accounted
+              {/* {dashboard.accountedLeaves} leaves accounted */}
             </div>
           </CardContent>
         </Card>

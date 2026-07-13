@@ -66,7 +66,7 @@ export function LotsTable({
                     variant="outline"
                     size="sm"
                     type="button"
-                    disabled={busy}
+                    loading={busy}
                     onClick={() => onEdit(lot)}
                   >
                     Edit
@@ -75,7 +75,7 @@ export function LotsTable({
                     variant="destructive"
                     size="sm"
                     type="button"
-                    disabled={busy}
+                    loading={busy}
                     onClick={() => onDelete(lot.id, lot.lot_number)}
                   >
                     Delete

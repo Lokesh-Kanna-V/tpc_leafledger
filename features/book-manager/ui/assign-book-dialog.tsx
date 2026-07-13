@@ -277,7 +277,8 @@ export function AssignBookDialog({
           <div className="flex gap-2">
             <Button
               type="button"
-              disabled={!canAssign || busy}
+              disabled={!canAssign}
+              loading={busy}
               onClick={onAssignAndClose}
             >
               Assign and close
@@ -285,7 +286,8 @@ export function AssignBookDialog({
             <Button
               type="button"
               variant="secondary"
-              disabled={!canAssign || busy}
+              disabled={!canAssign}
+              loading={busy}
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()

@@ -159,7 +159,8 @@ export function AccountLeafDialog({
           <div className="flex gap-2">
             <Button
               type="button"
-              disabled={!canAccount || busy}
+              disabled={!canAccount}
+              loading={busy}
               onClick={onAccountAndClose}
             >
               Account and close
@@ -167,7 +168,8 @@ export function AccountLeafDialog({
             <Button
               type="button"
               variant="secondary"
-              disabled={!canAccount || busy}
+              disabled={!canAccount}
+              loading={busy}
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+import { toast } from "@/shared/hooks/use-toast"
 import type { Employee } from "@/shared/services/employees.service"
 import type { Office } from "@/shared/services/offices.service"
 import {
@@ -55,8 +56,16 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
       setNewRole("-")
       setNewOfficeIds([])
       await onReload()
+      toast({ title: "Employee created", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add employee")
+      const message =
+        err instanceof Error ? err.message : "Failed to add employee"
+      setError(message)
+      toast({
+        title: "Failed to add employee",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
@@ -76,8 +85,16 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
       await updateEmployee(editId, { name, role, office_ids: editOfficeIds })
       setEditOpen(false)
       await onReload()
+      toast({ title: "Employee updated", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update employee")
+      const message =
+        err instanceof Error ? err.message : "Failed to update employee"
+      setError(message)
+      toast({
+        title: "Failed to update employee",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
@@ -89,8 +106,16 @@ export function useEmployees(offices: Office[], onReload: () => Promise<void>) {
     try {
       await deleteEmployee(id)
       await onReload()
+      toast({ title: "Employee deleted", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete employee")
+      const message =
+        err instanceof Error ? err.message : "Failed to delete employee"
+      setError(message)
+      toast({
+        title: "Failed to delete employee",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }

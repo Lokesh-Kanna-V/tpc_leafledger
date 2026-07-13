@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+import { toast } from "@/shared/hooks/use-toast"
 import type { Office } from "@/shared/services/offices.service"
 import {
   createOffice,
@@ -47,8 +48,11 @@ export function useOffices(onReload: () => Promise<void>) {
       setNewName("")
       setNewLeafAlertDays("2")
       await onReload()
+      toast({ title: "Office created", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add office")
+      const message = err instanceof Error ? err.message : "Failed to add office"
+      setError(message)
+      toast({ title: "Failed to add office", description: message, variant: "destructive" })
     } finally {
       setBusy(false)
     }
@@ -72,8 +76,16 @@ export function useOffices(onReload: () => Promise<void>) {
       await updateOffice(editId, { name, leaf_alert_days: leafAlertDays })
       setEditOpen(false)
       await onReload()
+      toast({ title: "Office updated", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update office")
+      const message =
+        err instanceof Error ? err.message : "Failed to update office"
+      setError(message)
+      toast({
+        title: "Failed to update office",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
@@ -85,8 +97,16 @@ export function useOffices(onReload: () => Promise<void>) {
     try {
       await deleteOffice(id)
       await onReload()
+      toast({ title: "Office deleted", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete office")
+      const message =
+        err instanceof Error ? err.message : "Failed to delete office"
+      setError(message)
+      toast({
+        title: "Failed to delete office",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }

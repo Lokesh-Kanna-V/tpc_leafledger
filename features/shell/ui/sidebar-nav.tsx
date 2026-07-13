@@ -12,6 +12,7 @@ import {
   BoxesIcon,
 } from "lucide-react"
 
+import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
 
 type NavItem = {
@@ -167,12 +168,13 @@ export function SidebarNav({
 
       {/* Footer */}
       <div className="border-t border-border px-2 py-2">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onLogout}
-          disabled={logoutBusy}
+          loading={logoutBusy}
           className={cn(
-            "flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50",
+            "flex h-auto w-full items-center justify-start gap-2 overflow-hidden rounded-md px-2 py-2 text-left font-normal",
             collapsed && "justify-center"
           )}
         >
@@ -192,7 +194,7 @@ export function SidebarNav({
           {!collapsed && (
             <LogOut className="h-4 w-4 shrink-0 text-muted-foreground" />
           )}
-        </button>
+        </Button>
         {!collapsed && (
           <div className="mt-2 flex items-center justify-center gap-1 text-muted-foreground">
             <Image

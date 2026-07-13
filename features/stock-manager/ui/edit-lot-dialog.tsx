@@ -58,7 +58,7 @@ export function EditLotDialog({
               Cancel
             </Button>
           </DialogClose>
-          <Button type="button" disabled={busy} onClick={onSave}>
+          <Button type="button" loading={busy} onClick={onSave}>
             Save
           </Button>
         </DialogFooter>

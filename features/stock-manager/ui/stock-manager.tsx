@@ -3,6 +3,7 @@
 import { cn } from "@/shared/lib/utils"
 import { MONTH_OPTIONS } from "@/shared/config/constants"
 import { AdminConfirmDialog } from "@/shared/ui/admin-confirm-dialog"
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 import type { Lot } from "../services/lots.service"
 import { useStockManager } from "../hooks/use-stock-manager"
 import { AddLotForm } from "./add-lot-form"
@@ -38,6 +39,10 @@ export default function StockManager({ lots, onReload }: StockManagerProps) {
     openEdit,
     handleSaveEdit,
     handleDelete,
+    confirmDeleteLot,
+    deleteConfirmOpen,
+    setDeleteConfirmOpen,
+    pendingDeleteLot,
     deleteAdminOpen,
     setDeleteAdminOpen,
     deleteAdminError,
@@ -103,7 +108,7 @@ export default function StockManager({ lots, onReload }: StockManagerProps) {
         visibleLots={visibleLots}
         busy={busy}
         onEdit={openEdit}
-        onDelete={(id, lotNumber) => void handleDelete(id, lotNumber)}
+        onDelete={(id, lotNumber) => handleDelete(id, lotNumber)}
       />
 
       <EditLotDialog
@@ -115,8 +120,23 @@ export default function StockManager({ lots, onReload }: StockManagerProps) {
         onSave={() => void handleSaveEdit()}
       />
 
+      <ConfirmDialog
+        key={`confirm-${pendingDeleteLot?.id ?? "closed"}`}
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete lot"
+        description={
+          pendingDeleteLot
+            ? `Delete lot ${pendingDeleteLot.lotNumber}? This also deletes the books it generated (and their leaves). This cannot be undone.`
+            : ""
+        }
+        busy={busy}
+        error={error}
+        onConfirm={() => void confirmDeleteLot()}
+      />
+
       <AdminConfirmDialog
-        key={pendingDeleteLotId ?? "closed"}
+        key={`admin-${pendingDeleteLotId ?? "closed"}`}
         open={deleteAdminOpen}
         onOpenChange={setDeleteAdminOpen}
         title="Confirm deletion"

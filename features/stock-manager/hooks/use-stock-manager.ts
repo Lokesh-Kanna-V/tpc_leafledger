@@ -6,6 +6,7 @@ import {
   ADMIN_CONFIRM_REQUIRED_STATUS,
   ApiError,
 } from "@/shared/services/api-client"
+import { toast } from "@/shared/hooks/use-toast"
 import type { Lot } from "../services/lots.service"
 import { createLot, deleteLot, updateLot } from "../services/lots.service"
 
@@ -13,6 +14,10 @@ export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [pendingDeleteLot, setPendingDeleteLot] = useState<
+    { id: number; lotNumber: string } | null
+  >(null)
   const [deleteAdminOpen, setDeleteAdminOpen] = useState(false)
   const [deleteAdminError, setDeleteAdminError] = useState<string | null>(
     null
@@ -74,8 +79,15 @@ export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
       setNewFrom("")
       setNewTo("")
       await onReload()
+      toast({ title: "Lot created", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add lot")
+      const message = err instanceof Error ? err.message : "Failed to add lot"
+      setError(message)
+      toast({
+        title: "Failed to add lot",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
@@ -101,39 +113,65 @@ export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
       await updateLot(editId, { lot_number })
       setEditOpen(false)
       await onReload()
+      toast({ title: "Lot updated", variant: "success" })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update lot")
+      const message =
+        err instanceof Error ? err.message : "Failed to update lot"
+      setError(message)
+      toast({
+        title: "Failed to update lot",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
   }
 
-  /** Deletes a lot, which cascades to delete the books it generated (and
-   *  their leaves). If any of those books are assigned to an office or an
-   *  employee, the server requires admin credentials — it rejects with
-   *  ADMIN_CONFIRM_REQUIRED_STATUS, which opens the admin-confirm dialog. */
-  async function handleDelete(id: number, lotNumber: string) {
+  /** Opens the confirm-delete dialog for a lot. If its books are assigned to
+   *  an office or an employee, the server requires admin credentials — it
+   *  rejects with ADMIN_CONFIRM_REQUIRED_STATUS, which opens the admin-confirm
+   *  dialog instead. */
+  function handleDelete(id: number, lotNumber: string) {
     if (busy) return
-    const ok = window.confirm(
-      `Delete lot ${lotNumber}? This also deletes the books it generated (and their leaves). This cannot be undone.`
-    )
-    if (!ok) return
+    setPendingDeleteLot({ id, lotNumber })
+    setError(null)
+    setDeleteConfirmOpen(true)
+  }
+
+  /** Deletes the lot pending confirmation, which cascades to delete the books
+   *  it generated (and their leaves). */
+  async function confirmDeleteLot() {
+    if (!pendingDeleteLot) return
+    const { id, lotNumber } = pendingDeleteLot
 
     setBusy(true)
     setError(null)
     try {
       await deleteLot(id)
       await onReload()
+      toast({ title: `Lot ${lotNumber} deleted`, variant: "success" })
+      setDeleteConfirmOpen(false)
+      setPendingDeleteLot(null)
     } catch (err) {
       if (
         err instanceof ApiError &&
         err.status === ADMIN_CONFIRM_REQUIRED_STATUS
       ) {
+        setDeleteConfirmOpen(false)
+        setPendingDeleteLot(null)
         setPendingDeleteLotId(id)
         setDeleteAdminError(null)
         setDeleteAdminOpen(true)
       } else {
-        setError(err instanceof Error ? err.message : "Failed to delete lot")
+        const message =
+          err instanceof Error ? err.message : "Failed to delete lot"
+        setError(message)
+        toast({
+          title: "Failed to delete lot",
+          description: message,
+          variant: "destructive",
+        })
       }
     } finally {
       setBusy(false)
@@ -149,10 +187,16 @@ export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
       setDeleteAdminOpen(false)
       setPendingDeleteLotId(null)
       await onReload()
+      toast({ title: "Lot deleted", variant: "success" })
     } catch (err) {
-      setDeleteAdminError(
+      const message =
         err instanceof Error ? err.message : "Failed to delete lot"
-      )
+      setDeleteAdminError(message)
+      toast({
+        title: "Failed to delete lot",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
@@ -181,6 +225,10 @@ export function useStockManager(lots: Lot[], onReload: () => Promise<void>) {
     openEdit,
     handleSaveEdit,
     handleDelete,
+    confirmDeleteLot,
+    deleteConfirmOpen,
+    setDeleteConfirmOpen,
+    pendingDeleteLot,
 
     deleteAdminOpen,
     setDeleteAdminOpen,

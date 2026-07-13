@@ -191,7 +191,7 @@ export function UnaccountLeafDialog({
               <Button
                 type="button"
                 variant="destructive"
-                disabled={busy}
+                loading={busy}
                 onClick={() => {
                   const action = pendingAction
                   setPendingAction(null)

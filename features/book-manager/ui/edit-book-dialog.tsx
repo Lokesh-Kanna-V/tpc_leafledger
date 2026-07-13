@@ -275,7 +275,8 @@ export function EditBookDialog({
           </DialogClose>
           <Button
             type="button"
-            disabled={!canEditSave || busy}
+            disabled={!canEditSave}
+            loading={busy}
             onClick={onSave}
           >
             Save

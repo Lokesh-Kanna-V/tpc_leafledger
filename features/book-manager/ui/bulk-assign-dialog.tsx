@@ -329,7 +329,8 @@ export function BulkAssignDialog({
               </DialogClose>
               <Button
                 type="button"
-                disabled={!canStartBulk || busy}
+                disabled={!canStartBulk}
+                loading={busy}
                 onClick={onNext}
               >
                 Next
@@ -414,7 +415,8 @@ export function BulkAssignDialog({
               </DialogClose>
               <Button
                 type="button"
-                disabled={!canSaveBulkLeafRange || busy}
+                disabled={!canSaveBulkLeafRange}
+                loading={busy}
                 onClick={onSaveLeafRange}
               >
                 Next

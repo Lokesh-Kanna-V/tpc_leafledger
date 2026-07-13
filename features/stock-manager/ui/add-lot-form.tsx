@@ -73,7 +73,7 @@ export function AddLotForm({
             />
           </FieldContent>
         </Field>
-        <Button type="button" disabled={busy} onClick={onAdd}>
+        <Button type="button" loading={busy} onClick={onAdd}>
           Add
         </Button>
       </div>

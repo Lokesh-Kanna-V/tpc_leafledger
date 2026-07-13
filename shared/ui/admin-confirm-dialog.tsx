@@ -94,7 +94,8 @@ export function AdminConfirmDialog({
           <Button
             type="button"
             variant="destructive"
-            disabled={busy || !name.trim() || !password}
+            disabled={!name.trim() || !password}
+            loading={busy}
             onClick={() => onConfirm(name.trim(), password)}
           >
             Confirm delete

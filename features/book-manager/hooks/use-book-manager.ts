@@ -10,6 +10,7 @@ import {
   ADMIN_CONFIRM_REQUIRED_STATUS,
   ApiError,
 } from "@/shared/services/api-client"
+import { toast } from "@/shared/hooks/use-toast"
 
 import type { Book } from "../services/books.service"
 import {
@@ -139,6 +140,10 @@ export function useBookManager({
   const [editActionError, setEditActionError] = useState<string | null>(null)
 
   const [deleteActionError, setDeleteActionError] = useState<string | null>(
+    null
+  )
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [pendingDeleteRow, setPendingDeleteRow] = useState<BookRow | null>(
     null
   )
   const [deleteAdminOpen, setDeleteAdminOpen] = useState(false)
@@ -792,6 +797,7 @@ export function useBookManager({
       if (!toRaw) {
         await accountConsumptionLeaf(fromRaw)
         await onReload()
+        toast({ title: `Leaf ${fromRaw} accounted`, variant: "success" })
         return true
       }
 
@@ -821,16 +827,24 @@ export function useBookManager({
 
       if (failures.length > 0) {
         const total = toNum - fromNum + 1
-        setAccountActionError(
-          `Accounted ${successCount} of ${total} leaf${total === 1 ? "" : "s"}.\n${failures.join("\n")}`
-        )
+        const message = `Accounted ${successCount} of ${total} leaf${total === 1 ? "" : "s"}.\n${failures.join("\n")}`
+        setAccountActionError(message)
+        toast({
+          title: "Accounting incomplete",
+          description: message,
+          variant: "destructive",
+        })
         return false
       }
+      toast({
+        title: `${toNum - fromNum + 1} leaves accounted`,
+        variant: "success",
+      })
       return true
     } catch (err) {
-      setAccountActionError(
-        err instanceof Error ? err.message : "Accounting failed"
-      )
+      const message = err instanceof Error ? err.message : "Accounting failed"
+      setAccountActionError(message)
+      toast({ title: "Accounting failed", description: message, variant: "destructive" })
       return false
     } finally {
       setBusy(false)
@@ -856,6 +870,7 @@ export function useBookManager({
       if (!toRaw) {
         await unaccountConsumptionLeaf(fromRaw)
         await onReload()
+        toast({ title: `Leaf ${fromRaw} unaccounted`, variant: "success" })
         return true
       }
 
@@ -885,16 +900,24 @@ export function useBookManager({
 
       if (failures.length > 0) {
         const total = toNum - fromNum + 1
-        setUnaccountActionError(
-          `Unaccounted ${successCount} of ${total} leaf${total === 1 ? "" : "s"}.\n${failures.join("\n")}`
-        )
+        const message = `Unaccounted ${successCount} of ${total} leaf${total === 1 ? "" : "s"}.\n${failures.join("\n")}`
+        setUnaccountActionError(message)
+        toast({
+          title: "Unaccounting incomplete",
+          description: message,
+          variant: "destructive",
+        })
         return false
       }
+      toast({
+        title: `${toNum - fromNum + 1} leaves unaccounted`,
+        variant: "success",
+      })
       return true
     } catch (err) {
-      setUnaccountActionError(
-        err instanceof Error ? err.message : "Unaccounting failed"
-      )
+      const message = err instanceof Error ? err.message : "Unaccounting failed"
+      setUnaccountActionError(message)
+      toast({ title: "Unaccounting failed", description: message, variant: "destructive" })
       return false
     } finally {
       setBusy(false)
@@ -991,11 +1014,12 @@ export function useBookManager({
       }
 
       await onReload()
+      toast({ title: `Book ${apiBook.book_number} assigned`, variant: "success" })
       return true
     } catch (err) {
-      setAssignActionError(
-        err instanceof Error ? err.message : "Assignment failed"
-      )
+      const message = err instanceof Error ? err.message : "Assignment failed"
+      setAssignActionError(message)
+      toast({ title: "Assignment failed", description: message, variant: "destructive" })
       return false
     } finally {
       setBusy(false)
@@ -1075,11 +1099,12 @@ export function useBookManager({
       }
 
       await onReload()
+      toast({ title: `Book ${created.book_number} added`, variant: "success" })
       return true
     } catch (err) {
-      setAddActionError(
-        err instanceof Error ? err.message : "Failed to add book"
-      )
+      const message = err instanceof Error ? err.message : "Failed to add book"
+      setAddActionError(message)
+      toast({ title: "Failed to add book", description: message, variant: "destructive" })
       return false
     } finally {
       setBusy(false)
@@ -1096,6 +1121,13 @@ export function useBookManager({
         bookToUpdateBody({ ...apiBook, book_status: "store" })
       )
       await onReload()
+      toast({ title: `Book ${apiBook.book_number} moved to store`, variant: "success" })
+    } catch (err) {
+      toast({
+        title: "Failed to move book to store",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
@@ -1111,38 +1143,58 @@ export function useBookManager({
         bookToUpdateBody({ ...apiBook, in_floor: !apiBook.in_floor })
       )
       await onReload()
+      toast({
+        title: `Book ${apiBook.book_number} marked ${apiBook.in_floor ? "out of floor" : "in floor"}`,
+        variant: "success",
+      })
+    } catch (err) {
+      toast({
+        title: "Failed to update in-floor status",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      })
     } finally {
       setBusy(false)
     }
   }
 
-  /** Deletes a book (and, by DB cascade, its leaves). Books already assigned
-   *  to an office or an employee need admin credentials — the server rejects
-   *  with ADMIN_CONFIRM_REQUIRED_STATUS, which opens the admin-confirm dialog. */
-  async function deleteBookRow(row: BookRow) {
+  /** Opens the confirm-delete dialog for a book. Books already assigned to an
+   *  office or an employee need admin credentials — the server rejects with
+   *  ADMIN_CONFIRM_REQUIRED_STATUS, which opens the admin-confirm dialog instead. */
+  function deleteBookRow(row: BookRow) {
     if (busy) return
-    const ok = window.confirm(
-      `Delete book ${row.bookNo}? This also deletes its leaves. This cannot be undone.`
-    )
-    if (!ok) return
+    setPendingDeleteRow(row)
+    setDeleteActionError(null)
+    setDeleteConfirmOpen(true)
+  }
+
+  /** Deletes the book pending confirmation (and, by DB cascade, its leaves). */
+  async function confirmDeleteBookRow() {
+    if (!pendingDeleteRow) return
+    const row = pendingDeleteRow
 
     setBusy(true)
     setDeleteActionError(null)
     try {
       await deleteBook(row.dbId)
       await onReload()
+      toast({ title: `Book ${row.bookNo} deleted`, variant: "success" })
+      setDeleteConfirmOpen(false)
+      setPendingDeleteRow(null)
     } catch (err) {
       if (
         err instanceof ApiError &&
         err.status === ADMIN_CONFIRM_REQUIRED_STATUS
       ) {
+        setDeleteConfirmOpen(false)
+        setPendingDeleteRow(null)
         setPendingDeleteBookId(row.dbId)
         setDeleteAdminError(null)
         setDeleteAdminOpen(true)
       } else {
-        setDeleteActionError(
-          err instanceof Error ? err.message : "Failed to delete book"
-        )
+        const message = err instanceof Error ? err.message : "Failed to delete book"
+        setDeleteActionError(message)
+        toast({ title: "Failed to delete book", description: message, variant: "destructive" })
       }
     } finally {
       setBusy(false)
@@ -1158,10 +1210,11 @@ export function useBookManager({
       setDeleteAdminOpen(false)
       setPendingDeleteBookId(null)
       await onReload()
+      toast({ title: "Book deleted", variant: "success" })
     } catch (err) {
-      setDeleteAdminError(
-        err instanceof Error ? err.message : "Failed to delete book"
-      )
+      const message = err instanceof Error ? err.message : "Failed to delete book"
+      setDeleteAdminError(message)
+      toast({ title: "Failed to delete book", description: message, variant: "destructive" })
     } finally {
       setBusy(false)
     }
@@ -1267,11 +1320,12 @@ export function useBookManager({
       }
 
       await onReload()
+      toast({ title: `Book ${editBookNo.trim()} updated`, variant: "success" })
       return true
     } catch (err) {
-      setEditActionError(
-        err instanceof Error ? err.message : "Failed to update book"
-      )
+      const message = err instanceof Error ? err.message : "Failed to update book"
+      setEditActionError(message)
+      toast({ title: "Failed to update book", description: message, variant: "destructive" })
       return false
     } finally {
       setBusy(false)
@@ -1377,12 +1431,14 @@ export function useBookManager({
 
       if (remaining.length === 0) {
         await finishBulkAssign(bulkBookIds, overrides)
+      } else {
+        toast({ title: `Leaf range saved for book ${bulkCurrentLeafBook.book_number}`, variant: "success" })
       }
       return true
     } catch (err) {
-      setBulkActionError(
-        err instanceof Error ? err.message : "Failed to save leaf range"
-      )
+      const message = err instanceof Error ? err.message : "Failed to save leaf range"
+      setBulkActionError(message)
+      toast({ title: "Failed to save leaf range", description: message, variant: "destructive" })
       return false
     } finally {
       setBusy(false)
@@ -1441,17 +1497,18 @@ export function useBookManager({
 
       await onReload()
       bulkLeafRangeOverridesRef.current = {}
-      setBulkResultMessage(
+      const resultMessage =
         `${bookIds.length} book${bookIds.length === 1 ? "" : "s"} assigned to the selected office` +
-          (empId !== null ? `, ${leavesAssigned} leaves assigned.` : ".")
-      )
+        (empId !== null ? `, ${leavesAssigned} leaves assigned.` : ".")
+      setBulkResultMessage(resultMessage)
       setBulkStep("form")
       setBulkBookIds([])
       setBulkPendingLeafBookIds([])
+      toast({ title: "Bulk assignment complete", description: resultMessage, variant: "success" })
     } catch (err) {
-      setBulkActionError(
-        err instanceof Error ? err.message : "Bulk assignment failed"
-      )
+      const message = err instanceof Error ? err.message : "Bulk assignment failed"
+      setBulkActionError(message)
+      toast({ title: "Bulk assignment failed", description: message, variant: "destructive" })
     } finally {
       setBusy(false)
     }
@@ -1623,11 +1680,15 @@ export function useBookManager({
 
     deleteActionError,
     setDeleteActionError,
+    deleteConfirmOpen,
+    setDeleteConfirmOpen,
+    pendingDeleteRow,
     deleteAdminOpen,
     setDeleteAdminOpen,
     deleteAdminError,
     pendingDeleteBookId,
     deleteBookRow,
+    confirmDeleteBookRow,
     confirmDeleteBookWithAdmin,
 
     busy,

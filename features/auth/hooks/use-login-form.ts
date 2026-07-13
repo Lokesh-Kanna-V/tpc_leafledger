@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { ApiError } from "@/shared/services/api-client"
+import { toast } from "@/shared/hooks/use-toast"
 import { login } from "../services/auth.service"
 
 export function useLoginForm() {
@@ -29,6 +30,7 @@ export function useLoginForm() {
             ? err.message
             : "Something went wrong"
       setError(message)
+      toast({ title: "Login failed", description: message, variant: "destructive" })
     } finally {
       setPending(false)
     }

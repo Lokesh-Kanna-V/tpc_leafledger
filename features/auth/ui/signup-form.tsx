@@ -113,7 +113,7 @@ export function SignupForm({
                 />
               </Field>
               <Field>
-                <Button type="submit" disabled={pending}>
+                <Button type="submit" loading={pending}>
                   {pending ? "Creating account…" : "Sign up"}
                 </Button>
               </Field>
