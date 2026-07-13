@@ -1177,7 +1177,20 @@ export function useBookManager({
       apiBook.consignment_no_from !== null ? String(apiBook.consignment_no_from) : ""
     )
     setEditLeafTo(apiBook.consignment_no_to !== null ? String(apiBook.consignment_no_to) : "")
-    setEditEmployeeId("")
+
+    const { from: leafFrom, to: leafTo } = displayLeafSpanForBook(apiBook)
+    const assignedUserIds = new Set(
+      consumptions
+        .filter((c) => {
+          if (c.book_id !== apiBook.id || typeof c.user_id !== "number") return false
+          const n = parseConsignmentNo(c.consignment_no)
+          return n !== null && n >= leafFrom && n <= leafTo
+        })
+        .map((c) => c.user_id as number)
+    )
+    setEditEmployeeId(
+      assignedUserIds.size === 1 ? String([...assignedUserIds][0]) : ""
+    )
     setEditNewEmployeeName("")
     setEditNewEmployeeRole("")
     setEditActionError(null)

@@ -141,7 +141,9 @@ export function EditBookDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <Field data-invalid={!!errors.leafFrom}>
-              <FieldLabel htmlFor="edit-leaf-from">Consignment no. from</FieldLabel>
+              <FieldLabel htmlFor="edit-leaf-from">
+                Consignment no. from
+              </FieldLabel>
               <FieldContent>
                 <Input
                   id="edit-leaf-from"
@@ -152,9 +154,7 @@ export function EditBookDialog({
                   aria-invalid={!!errors.leafFrom}
                 />
                 <FieldError
-                  errors={
-                    errors.leafFrom ? [{ message: errors.leafFrom }] : []
-                  }
+                  errors={errors.leafFrom ? [{ message: errors.leafFrom }] : []}
                 />
               </FieldContent>
             </Field>
@@ -195,7 +195,7 @@ export function EditBookDialog({
                 <option value="">No change</option>
                 {employeesSortedForAssign.map((emp) => (
                   <option key={emp.id} value={String(emp.id)}>
-                    {emp.name} ({emp.role})
+                    {emp.name}
                   </option>
                 ))}
                 <option value="__new__">+ Add new employee…</option>
