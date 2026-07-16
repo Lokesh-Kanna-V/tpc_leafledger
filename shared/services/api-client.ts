@@ -18,9 +18,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Server responses are wrapped as `{ success: true, data } | { success: false, error }`. */
 export async function parseResponse<T>(response: Response): Promise<T> {
   if (response.ok) {
-    return response.json() as Promise<T>
+    const body = (await response.json()) as { data: T }
+    return body.data
   }
   let message = `Request failed (${response.status})`
   try {

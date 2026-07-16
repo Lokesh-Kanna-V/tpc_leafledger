@@ -19,6 +19,25 @@ services:
       timeout: 5s
       retries: 10
 
+  server:
+    # build:
+    #   context: ../leafledger_server
+    #   dockerfile: Dockerfile
+    image: leafledger_server:latest
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Kolkata
+      DATABASE_URL: postgresql://leafledger:leafledger@db:5432/leafledger
+      # Override in `.env` or your shell; default is for local Docker only.
+      JWT_SECRET: this-is-a-secret
+      PORT: 4000
+    depends_on:
+      db:
+        condition: service_healthy
+
   app:
     # build:
     #   context: .
@@ -30,12 +49,12 @@ services:
     environment:
       NODE_ENV: production
       TZ: Asia/Kolkata
-      DATABASE_URL: postgresql://leafledger:leafledger@db:5432/leafledger
+      SERVER_URL: http://server:4000
       # Override in `.env` or your shell; default is for local Docker only.
       JWT_SECRET: this-is-a-secret
     depends_on:
-      db:
-        condition: service_healthy
+      server:
+        condition: service_started
 
 volumes:
   postgres_data:
