@@ -167,7 +167,7 @@ export function EditBookDialog({
                   inputMode="numeric"
                   value={editLeafTo}
                   onChange={(e) => onEditLeafToChange(e.target.value)}
-                  placeholder="50"
+                  placeholder="100"
                   aria-invalid={!!errors.leafTo}
                 />
                 <FieldError

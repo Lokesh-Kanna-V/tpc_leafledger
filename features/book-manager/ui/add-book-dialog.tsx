@@ -116,7 +116,7 @@ export function AddBookDialog({
         <DialogHeader>
           <DialogTitle>Add new book</DialogTitle>
           <DialogDescription>
-            Enter the leaf range. Leaf count cannot exceed <b>50</b>.
+            Enter the leaf range. Leaf count cannot exceed <b>100</b>.
           </DialogDescription>
         </DialogHeader>
 
@@ -206,7 +206,7 @@ export function AddBookDialog({
                   inputMode="numeric"
                   value={leafTo}
                   onChange={(e) => onLeafToChange(e.target.value)}
-                  placeholder="50"
+                  placeholder="100"
                   aria-invalid={!!errors.leafTo}
                 />
                 <FieldError

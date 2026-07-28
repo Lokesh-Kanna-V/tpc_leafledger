@@ -392,7 +392,7 @@ export function BulkAssignDialog({
                       inputMode="numeric"
                       value={bulkLeafTo}
                       onChange={(e) => onBulkLeafToChange(e.target.value)}
-                      placeholder="50"
+                      placeholder="100"
                       aria-invalid={!!bulkLeafErrors.leafTo}
                     />
                     <FieldError

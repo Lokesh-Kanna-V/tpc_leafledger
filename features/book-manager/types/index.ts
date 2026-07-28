@@ -22,7 +22,7 @@ export type BookRow = {
   accountedLeafCount: number
   /** Whether this book has a real consignment_no_from/consignment_no_to assigned (false for unassigned stock books). */
   hasLeafRange: boolean
-  /** Total leaves in this book: leafTo - leafFrom + 1 when assigned, else the standard 50-leaf book size. */
+  /** Total leaves in this book: leafTo - leafFrom + 1 when assigned, else the standard 100-leaf book size. */
   leafCount: number
 }
 

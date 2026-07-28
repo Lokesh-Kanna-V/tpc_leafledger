@@ -248,7 +248,7 @@ export function useBookManager({
       if (to < from)
         e.leafTo = "Leaf to must be greater than or equal to leaf from."
       if (leafMetrics.count <= 0) e.leafTo = "Leaf range must be at least 1."
-      if (leafMetrics.count > 50) e.leafTo = "Leaf count cannot exceed 50."
+      if (leafMetrics.count > 100) e.leafTo = "Leaf count cannot exceed 100."
 
       if (!e.leafTo) {
         const conflict = findLeafOverlap(
@@ -291,7 +291,7 @@ export function useBookManager({
     !errors.office &&
     !errors.assignee &&
     leafMetrics.count > 0 &&
-    leafMetrics.count <= 50
+    leafMetrics.count <= 100
 
   const bookNoOptions = useMemo(
     () =>
@@ -720,7 +720,7 @@ export function useBookManager({
       if (to < from)
         e.leafTo = "Leaf to must be greater than or equal to leaf from."
       if (count <= 0) e.leafTo = "Leaf range must be at least 1."
-      if (count > 50) e.leafTo = "Leaf count cannot exceed 50."
+      if (count > 100) e.leafTo = "Leaf count cannot exceed 100."
 
       if (!e.leafTo && bulkCurrentLeafBookId !== null) {
         const conflict = findLeafOverlap(

@@ -4,7 +4,7 @@ import type { Employee } from "@/shared/services/employees.service"
 import type { BookRow, OfficeLite } from "../types"
 
 /** Every physical book has this many leaves before it's assigned a numbered range. */
-export const DEFAULT_BOOK_LEAF_COUNT = 50
+export const DEFAULT_BOOK_LEAF_COUNT = 100
 
 /** Strips an optional "YYYY-" year prefix (e.g. "2026-5" -> "5") before parsing. */
 export function parseConsignmentNo(consignmentNo: string): number | null {
