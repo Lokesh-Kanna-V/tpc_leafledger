@@ -30,6 +30,7 @@ type BookManagerProps = {
   offices: Office[]
   consumptions: Consumption[]
   onReload: () => Promise<void>
+  onBookUpdated: (book: Book) => void
 }
 
 export default function BookManager({
@@ -39,6 +40,7 @@ export default function BookManager({
   offices,
   consumptions,
   onReload,
+  onBookUpdated,
 }: BookManagerProps) {
   const bm = useBookManager({
     books,
@@ -47,6 +49,7 @@ export default function BookManager({
     offices,
     consumptions,
     onReload,
+    onBookUpdated,
   })
 
   return (

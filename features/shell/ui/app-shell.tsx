@@ -30,6 +30,7 @@ export function AppShell() {
     dataLoading,
     dataError,
     reloadData,
+    patchBook,
     bookRows,
   } = useAppData()
 
@@ -98,6 +99,7 @@ export function AppShell() {
                   offices={offices}
                   consumptions={consumptions}
                   onReload={reloadData}
+                  onBookUpdated={patchBook}
                 />
               </>
             ) : active === "Stock Manager" ? (

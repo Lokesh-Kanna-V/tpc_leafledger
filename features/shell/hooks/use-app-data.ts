@@ -31,26 +31,21 @@ export function useAppData() {
   const reloadData = useCallback(async () => {
     setDataLoading(true)
     try {
-      const [b, c, e, o, l] = await Promise.all([
+      const [b, c, e, o, l, overdueAlerts] = await Promise.all([
         getBooks(),
         getConsumptions(),
         getEmployees(),
         getOffices(),
         getLots(),
+        getOverdueAlerts().catch(() => []),
       ])
       setApiBooks(b)
       setConsumptions(c)
       setEmployees(e)
       setOffices(o)
       setLots(l)
-      try {
-        const overdueAlerts = await getOverdueAlerts()
-        setAlerts(overdueAlerts)
-        setAlertCount(overdueAlerts.length)
-      } catch {
-        setAlerts([])
-        setAlertCount(0)
-      }
+      setAlerts(overdueAlerts)
+      setAlertCount(overdueAlerts.length)
       setDataError(null)
     } catch (err) {
       setDataError(
@@ -59,6 +54,17 @@ export function useAppData() {
     } finally {
       setDataLoading(false)
     }
+  }, [])
+
+  /**
+   * Merges a single already-updated book into local state without a full
+   * refetch — used after single-field writes (e.g. toggling in_floor) whose
+   * server response is already the authoritative row, so re-fetching
+   * books/consumptions/employees/offices/lots/alerts would just re-derive
+   * data that didn't change.
+   */
+  const patchBook = useCallback((updated: Book) => {
+    setApiBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }, [])
 
   useEffect(() => {
@@ -82,6 +88,7 @@ export function useAppData() {
     dataLoading,
     dataError,
     reloadData,
+    patchBook,
     bookRows,
   }
 }

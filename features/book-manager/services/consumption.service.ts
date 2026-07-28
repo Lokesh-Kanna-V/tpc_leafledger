@@ -26,6 +26,14 @@ export type UpdateConsumptionInput = {
   accounted_date: string | null
 }
 
+export type BulkUpsertConsumptionEntry = {
+  consignment_no: string
+  user_id: number | null
+  assigned_date: string
+  accounted: boolean
+  accounted_date: string | null
+}
+
 function consumptionPath(bookId: number, consignmentNo: string): string {
   return `/api/consumption/${encodeURIComponent(String(bookId))}/${encodeURIComponent(consignmentNo)}`
 }
@@ -114,6 +122,30 @@ export async function unaccountConsumptionLeaf(consignmentNo: string): Promise<C
     body: JSON.stringify({ consignment_no: key }),
   })
   return parseResponse<Consumption>(response)
+}
+
+/**
+ * Assign/update every leaf in a book in a single request instead of one
+ * network round trip per leaf — used by bulk-assign, which can touch dozens
+ * or hundreds of leaves across many books at once.
+ */
+export async function bulkUpsertConsumptionAssignments(
+  bookId: number,
+  entries: BulkUpsertConsumptionEntry[]
+): Promise<Consumption[]> {
+  const response = await fetch("/api/consumption/bulk-upsert", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      book_id: bookId,
+      entries: entries.map((e) => ({
+        ...e,
+        consignment_no: canonicalConsignmentNo(e.consignment_no),
+      })),
+    }),
+  })
+  const data = await parseResponse<Consumption[]>(response)
+  return Array.isArray(data) ? data : []
 }
 
 /** Assign/update one leaf without relying on POST 409 + PUT (legacy rows may not match PUT filters). */

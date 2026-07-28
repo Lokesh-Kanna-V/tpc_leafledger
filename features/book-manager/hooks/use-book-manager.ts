@@ -22,6 +22,7 @@ import {
 import type { Consumption } from "../services/consumption.service"
 import {
   accountConsumptionLeaf,
+  bulkUpsertConsumptionAssignments,
   createConsumption,
   unaccountConsumptionLeaf,
   upsertConsumptionAssignment,
@@ -46,6 +47,7 @@ type UseBookManagerParams = {
   offices: Office[]
   consumptions: Consumption[]
   onReload: () => Promise<void>
+  onBookUpdated: (book: Book) => void
 }
 
 export function useBookManager({
@@ -55,6 +57,7 @@ export function useBookManager({
   offices,
   consumptions,
   onReload,
+  onBookUpdated,
 }: UseBookManagerParams) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const keepAddDialogOpenRef = useRef(false)
@@ -1138,11 +1141,14 @@ export function useBookManager({
     if (!apiBook) return
     setBusy(true)
     try {
-      await updateBook(
+      const updated = await updateBook(
         apiBook.id,
         bookToUpdateBody({ ...apiBook, in_floor: !apiBook.in_floor })
       )
-      await onReload()
+      // The server response is already the authoritative updated row, so
+      // merge it in directly instead of re-fetching every data slice in
+      // the app for a single-field toggle.
+      onBookUpdated(updated)
       toast({
         title: `Book ${apiBook.book_number} marked ${apiBook.in_floor ? "out of floor" : "in floor"}`,
         variant: "success",
@@ -1465,35 +1471,46 @@ export function useBookManager({
 
       const officeIdNum = Number.parseInt(bulkOfficeId, 10)
       const today = dateIsoLocal()
-      let leavesAssigned = 0
 
-      for (const bookId of bookIds) {
-        const apiBook =
-          overrides[bookId] ?? apiBooks.find((b) => b.id === bookId)
-        if (!apiBook) continue
+      // Books are independent of each other (validated for non-overlapping
+      // leaf ranges before this step), so update them concurrently instead
+      // of one at a time; each book's leaves are written in a single batch
+      // request instead of one request per leaf.
+      const perBookLeafCounts = await Promise.all(
+        bookIds.map(async (bookId) => {
+          const apiBook =
+            overrides[bookId] ?? apiBooks.find((b) => b.id === bookId)
+          if (!apiBook) return 0
 
-        const savedBook = await updateBook(bookId, {
-          ...bookToUpdateBody(apiBook),
-          office_id: officeIdNum,
-        })
+          const savedBook = await updateBook(bookId, {
+            ...bookToUpdateBody(apiBook),
+            office_id: officeIdNum,
+          })
 
-        if (empId !== null) {
+          if (empId === null) return 0
+
           const span = displayLeafSpanForBook(savedBook)
           const minLeaf = minAssignableLeaf(savedBook, consumptions)
           const leafPrefix =
             savedBook.leaf_year !== null ? `${savedBook.leaf_year}-` : ""
 
+          const entries = []
           for (let L = minLeaf; L <= span.to; L++) {
-            await upsertConsumptionAssignment(bookId, `${leafPrefix}${L}`, {
+            entries.push({
+              consignment_no: `${leafPrefix}${L}`,
               user_id: empId,
               assigned_date: today,
               accounted: false,
               accounted_date: null,
             })
-            leavesAssigned += 1
           }
-        }
-      }
+          if (entries.length === 0) return 0
+
+          await bulkUpsertConsumptionAssignments(bookId, entries)
+          return entries.length
+        })
+      )
+      const leavesAssigned = perBookLeafCounts.reduce((a, b) => a + b, 0)
 
       await onReload()
       bulkLeafRangeOverridesRef.current = {}
